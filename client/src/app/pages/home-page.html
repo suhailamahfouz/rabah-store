@@ -1,20 +1,23 @@
 <section class="hero" [class.video-unavailable]="videoUnavailable">
-  <video
-    *ngIf="!mobileLayout()"
-    appInlineHeroVideo
-    class="hero-video"
-    [class.hidden]="videoUnavailable"
-    autoplay
-    muted
-    loop
-    playsinline
-    preload="metadata"
-    [poster]="heroPoster()"
-    (error)="videoUnavailable = true"
-    aria-hidden="true"
-  >
-    <source src="/videos/rabah-hero.mp4" type="video/mp4" />
-  </video>
+<video
+  *ngIf="mobileLayout()"
+  appInlineHeroVideo
+  class="hero-mobile-video"
+  [class.hidden]="videoUnavailable"
+  autoplay
+  muted
+  loop
+  playsinline
+  preload="metadata"
+  [poster]="heroPoster()"
+  (error)="videoUnavailable = true"
+  aria-hidden="true"
+>
+  <source
+    src="/videos/rabah-hero-mobile.mp4"
+    type="video/mp4"
+  />
+</video>
   <div class="hero-video-stack" *ngIf="mobileLayout()" aria-hidden="true">
     <video
       appInlineHeroVideo
