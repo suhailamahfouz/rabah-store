@@ -1,7 +1,8 @@
 import { StorefrontSkeletonComponent } from '../components/storefront-skeleton';
 import { StorefrontLoadingService } from '../services/storefront-loading.service';
 import { CommonModule } from '@angular/common';
-import { AfterViewInit, Component, computed, ElementRef, inject, QueryList, ViewChild, ViewChildren } from '@angular/core';
+import { Component, computed, DestroyRef, ElementRef, inject, signal, ViewChild } from '@angular/core';
+import { InlineHeroVideoDirective } from '../components/inline-hero-video';
 import { RouterLink } from '@angular/router';
 import { CategoryCardComponent } from '../components/category-card';
 import { StoreService } from '../services/store.service';
@@ -11,16 +12,26 @@ import { ProductService } from '../services/product.service';
 @Component({
   selector: 'app-home-page',
   standalone: true,
-  imports: [StorefrontSkeletonComponent, CommonModule, RouterLink, CategoryCardComponent],
+  imports: [InlineHeroVideoDirective, StorefrontSkeletonComponent, CommonModule, RouterLink, CategoryCardComponent],
   templateUrl: './home-page.html',
   styleUrl: './home-page.scss',
 })
-export class HomePageComponent implements AfterViewInit {
+export class HomePageComponent {
   readonly network = inject(StorefrontLoadingService);
   private readonly store = inject(StoreService);
   private readonly productsApi = inject(ProductService);
   private readonly categoriesApi = inject(CategoryService);
-  constructor() { this.productsApi.loadHomeProducts(); }
+  private readonly mobileQuery = window.matchMedia('(max-width: 640px)');
+  readonly mobileLayout = signal(this.mobileQuery.matches);
+  constructor() {
+    this.productsApi.loadHomeProducts();
+    const onResize = (event: MediaQueryListEvent) => {
+      this.mobileLayout.set(event.matches);
+      this.videoUnavailable = false;
+    };
+    this.mobileQuery.addEventListener?.('change', onResize);
+    inject(DestroyRef).onDestroy(() => this.mobileQuery.removeEventListener?.('change', onResize));
+  }
   retryProducts(): void { this.productsApi.loadHomeProducts(); }
   retryCategories(): void { this.categoriesApi.reload(); }
 
@@ -38,34 +49,6 @@ export class HomePageComponent implements AfterViewInit {
   videoUnavailable = false;
 
   @ViewChild('productCarousel') private productCarousel?: ElementRef<HTMLElement>;
-  @ViewChild('heroVideo') private heroVideo?: ElementRef<HTMLVideoElement>;
-  @ViewChildren('mobileVideo') private mobileVideos?: QueryList<ElementRef<HTMLVideoElement>>;
-
-  ngAfterViewInit(): void {
-    const video = this.heroVideo?.nativeElement;
-    if (!video) return;
-
-    video.muted = true;
-    if (window.matchMedia('(max-width: 640px)').matches) {
-      video.pause();
-      this.mobileVideos?.forEach(({ nativeElement }) => {
-        nativeElement.muted = true;
-        nativeElement.playsInline = true;
-        nativeElement.play().catch(() => {
-          this.videoUnavailable = true;
-        });
-      });
-      return;
-    }
-
-    video.play().catch(() => {
-      this.videoUnavailable = true;
-    });
-  }
-
-  onMobileVideoError(): void {
-    this.videoUnavailable = true;
-  }
 
   scrollProducts(direction: -1 | 1): void {
     const carousel = this.productCarousel?.nativeElement;

@@ -1,6 +1,7 @@
 <section class="hero" [class.video-unavailable]="videoUnavailable">
   <video
-    #heroVideo
+    *ngIf="!mobileLayout()"
+    appInlineHeroVideo
     class="hero-video"
     [class.hidden]="videoUnavailable"
     autoplay
@@ -14,16 +15,16 @@
   >
     <source src="/videos/rabah-hero.mp4" type="video/mp4" />
   </video>
-  <div class="hero-video-stack" aria-hidden="true">
+  <div class="hero-video-stack" *ngIf="mobileLayout()" aria-hidden="true">
     <video
-      #mobileVideo
+      appInlineHeroVideo
       *ngFor="let row of [1, 2, 3]"
       autoplay
       muted
       loop
       playsinline
       preload="auto"
-      (error)="onMobileVideoError()"
+      [poster]="heroPoster()"
     >
       <source src="/videos/rabah-hero.mp4" type="video/mp4" />
     </video>
