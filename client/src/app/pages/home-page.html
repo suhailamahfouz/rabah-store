@@ -1,36 +1,5 @@
-<section class="hero" [class.video-unavailable]="videoUnavailable">
-  <video
-    #heroVideo
-    class="hero-video"
-    [class.hidden]="videoUnavailable"
-    autoplay
-    muted
-    loop
-    playsinline
-    preload="metadata"
-    [poster]="heroPoster()"
-    (error)="videoUnavailable = true"
-    aria-hidden="true"
-  >
-    <source src="/videos/rabah-hero.mp4" type="video/mp4" />
-  </video>
-  <div class="hero-video-stack" aria-hidden="true">
-    <video
-      #mobileVideo
-      *ngFor="let row of [1, 2, 3]"
-      autoplay
-      muted
-      loop
-      playsinline
-      preload="auto"
-      (error)="onMobileVideoError()"
-    >
-      <source src="/videos/rabah-hero.mp4" type="video/mp4" />
-    </video>
-  </div>
-  <div class="hero-fallback" [class.visible]="videoUnavailable" aria-hidden="true">
-    <img [src]="heroPoster()" alt="" />
-  </div>
+<section class="hero">
+  <app-hero-media [poster]="heroPoster()" />
   <div class="hero-shade" aria-hidden="true"></div>
 
   <div class="hero-content">

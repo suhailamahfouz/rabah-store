@@ -1,3 +1,4 @@
+import { ProductColor } from '../data/product-colors';
 export type Lang = 'ar' | 'en';
 
 export interface LocalizedText {
@@ -18,6 +19,7 @@ export interface Category {
 }
 
 export interface Product {
+  colorOptions?: ProductColor[];
   id: string;
   sku?: string;
   slug: string;

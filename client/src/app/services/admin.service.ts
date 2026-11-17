@@ -1,3 +1,4 @@
+import { ProductColor } from '../data/product-colors';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
@@ -54,6 +55,7 @@ export interface AdminCategory {
 }
 
 export interface AdminProduct {
+  colorOptions?: ProductColor[];
   _id: string;
   sku: string;
   slug: string;
@@ -88,6 +90,7 @@ export interface AdminProductImage {
 }
 
 export interface AdminProductPayload {
+  colorOptions?: ProductColor[];
   sku: string;
   slug: string;
   name: { ar: string; en: string };
@@ -129,7 +132,7 @@ export interface AdminOrder {
     address: string;
     notes: string;
   };
-  items: Array<{ name: { ar: string; en: string }; sku: string; quantity: number; unitPrice: number; note?: string }>;
+  items: Array<{ name: { ar: string; en: string }; sku: string; quantity: number; unitPrice: number; color?: { ar: string; en: string }; note?: string }>;
   subtotal: number;
   shippingFee: number;
   total: number;
@@ -157,7 +160,7 @@ export interface AdminCustomerOrder {
   orderNumber: string;
   items: Array<{
     name: { ar?: string; en?: string };
-    note?: string;
+    color?: { ar: string; en: string }; note?: string;
     sku: string;
     quantity: number;
     unitPrice: number;

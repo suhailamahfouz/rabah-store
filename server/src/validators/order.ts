@@ -7,6 +7,7 @@ export const orderItemSchema = z
     productSlug: z.string().trim().min(1).max(120).optional(),
     quantity: z.number().int().min(1).max(100),
     note: z.string().trim().max(500).optional(),
+    color: z.string().regex(/^#[0-9a-fA-F]{6}$/).transform(value => value.toUpperCase()).optional(),
   })
   .refine((item) => Boolean(item.productId || item.productSlug), {
     message: "A product ID or slug is required",

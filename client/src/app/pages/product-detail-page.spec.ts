@@ -1,3 +1,4 @@
+import { ProductColor } from '../data/product-colors';
 import { TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap } from '@angular/router';
 import { signal } from '@angular/core';
@@ -13,6 +14,7 @@ describe('ProductDetailPageComponent general inventory', () => {
   const product = {
     id: 'product-1', slug: 'palette-product', name: { ar: 'منتج', en: 'Product' }, description: { ar: '', en: '' }, shortDescription: { ar: '', en: '' },
     price: 100, originalPrice: 120, rating: 5, reviewCount: 1, createdAt: '2026-01-01T00:00:00.000Z', stock: 3, category: 'bags',
+    colorOptions: [] as ProductColor[],
     colors: ['#111111', '#eeeeee'], images: ['/first.jpg', '/second.jpg', '/third.jpg'], features: [],
     variants: [
       { id: 'black', color: { ar: 'أسود', en: 'Black' }, hex: '#111111', stock: 2 },
@@ -32,6 +34,23 @@ describe('ProductDetailPageComponent general inventory', () => {
         { provide: StoreService, useValue: { lang: signal<'en' | 'ar'>('en'), currency: signal('EGP'), getProductBySlug: () => currentProduct, addToCart } },
       ],
     });
+  });
+
+  it('requires a chosen swatch and sends its identity to the cart', () => {
+    currentProduct = { ...product, colorOptions: [{ hex: '#111111', name: { ar: 'Black', en: 'Black' } }, { hex: '#FFFFFF', name: { ar: 'White', en: 'White' } }] };
+    const fixture = TestBed.createComponent(ProductDetailPageComponent);
+    fixture.detectChanges();
+    expect(fixture.componentInstance.canAddToCart()).toBe(false);
+    const swatches = fixture.nativeElement.querySelectorAll('app-color-swatches button');
+    swatches[1].click();
+    fixture.detectChanges();
+    expect(swatches[1].getAttribute('aria-pressed')).toBe('true');
+    expect(fixture.componentInstance.canAddToCart()).toBe(true);
+    fixture.componentInstance.addToCart();
+    expect(addToCartCall).toEqual(['product-1', 1, '#FFFFFF']);
+    fixture.nativeElement.querySelector('dialog').close = () => {};
+    params.next({ slug: 'another-bag' });
+    expect(fixture.componentInstance.selectedColor()).toBe('');
   });
 
   it('adds directly without a color choice and respects general stock', () => {

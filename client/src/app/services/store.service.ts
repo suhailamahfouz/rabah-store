@@ -105,7 +105,8 @@ export class StoreService {
             return [{
               productId: value.productId,
               quantity,
-              note: (typeof value.note === 'string' ? value.note : typeof value.color === 'string' ? value.color : '').slice(0, 500),
+              color: typeof value.color === 'string' && /^#[0-9a-f]{6}$/i.test(value.color) ? value.color.toUpperCase() : undefined,
+              note: (typeof value.note === 'string' ? value.note : typeof value.color === 'string' && !/^#[0-9a-f]{6}$/i.test(value.color) ? value.color : '').slice(0, 500),
             }];
           }));
         }
@@ -194,6 +195,9 @@ export class StoreService {
     const nextItems = [...this.cart()];
     const product = this.getProductById(productId);
     if (!product || !Number.isFinite(product.stock) || product.stock <= 0 || !Number.isInteger(quantity) || quantity <= 0) return;
+    color = color?.toUpperCase();
+    const options = product.colorOptions ?? [];
+    if ((options.length && !color) || (color && !options.some(option => option.hex === color))) return;
     const reserved = nextItems.filter(item => item.productId === product.id || this.getProductById(item.productId)?.slug === product.slug)
       .reduce((total, item) => total + item.quantity, 0);
     if (reserved + quantity > product.stock) return;
@@ -230,6 +234,11 @@ export class StoreService {
 
   updateQuantity(productId: string, quantity: number, color?: string, variantId?: string): void {
     const product = this.getProductById(productId);
+    if (!Number.isInteger(quantity) || quantity < 0) return;
+    const otherQuantity = this.cart().filter(item =>
+      (item.productId === productId || (!!product && this.getProductById(item.productId)?.slug === product.slug)) &&
+      !(item.color === color && item.variantId === variantId)).reduce((sum, item) => sum + item.quantity, 0);
+    if (quantity > 0 && (!product || quantity + otherQuantity > product.stock)) return;
     const nextItems = this.cart()
       .map((item) => {
         const sameProduct = item.productId === productId ||
@@ -271,6 +280,10 @@ export class StoreService {
       item.productId === productId && (index === undefined || i === index)
         ? { ...item, note: note.slice(0, 500) } : item));
     this.persistCart();
+  }
+
+  colorName(product: Product, hex?: string): string {
+    return product.colorOptions?.find(color => color.hex === hex)?.name[this.lang()] ?? hex ?? '';
   }
 
   get cartCount(): number {

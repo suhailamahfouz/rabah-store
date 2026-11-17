@@ -109,7 +109,7 @@ export async function readCustomer(req: Request, res: Response): Promise<void> {
     Order.find({ customerId: objectId })
       .sort({ createdAt: -1 })
       .limit(100)
-      .select('orderNumber items.name items.sku items.quantity items.unitPrice items.note total currency paymentMethod paymentStatus orderStatus createdAt')
+      .select('orderNumber items.name items.sku items.quantity items.unitPrice items.note items.color total currency paymentMethod paymentStatus orderStatus createdAt')
       .lean(),
   ]);
   if (!customer) throw AppError.notFound('Customer not found');

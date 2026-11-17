@@ -21,6 +21,7 @@ const productProjection = {
   category: 1,
   badge: 1,
   variants: 1,
+  colorOptions: 1,
   images: 1,
   features: 1,
   isFeatured: 1,
@@ -28,6 +29,7 @@ const productProjection = {
 } as const;
 
 export interface ProductView {
+  colorOptions: Array<{ hex: string; name: { ar: string; en: string } }>;
   id: string;
   sku: string;
   slug: string;
@@ -79,6 +81,7 @@ export function toProductView(doc: any): ProductView {
     : [];
   return {
     id: String(doc?._id ?? ''),
+    colorOptions: (doc?.colorOptions ?? []).map((color: any) => ({ hex: String(color.hex).toUpperCase(), name: { ar: String(color.name.ar), en: String(color.name.en) } })),
     sku: String(doc?.sku ?? ''),
     slug: String(doc?.slug ?? ''),
     name: (doc?.name as { ar: string; en: string }) ?? { ar: '', en: '' },

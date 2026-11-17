@@ -53,6 +53,10 @@ const productShape = {
   salePrice: z.number().nonnegative().nullable().optional(),
   stock: z.number().int().nonnegative(),
   variants: z.array(productVariantSchema).max(0, 'Color variants are no longer supported; use general stock').default([]),
+  colorOptions: z.array(z.object({
+    name: z.object({ ar: z.string().trim().min(1).max(60), en: z.string().trim().min(1).max(60) }),
+    hex: z.string().regex(/^#[0-9a-fA-F]{6}$/).transform(value => value.toUpperCase()),
+  }).strict()).max(60).refine(colors => new Set(colors.map(c => c.hex)).size === colors.length, 'Duplicate color').default([]),
   images: z.array(z.object({
     url: assetUrl,
     publicId: optionalCloudinaryPublicId,
@@ -78,6 +82,7 @@ export const adminProductCreateSchema = adminProductSchema
 export const adminProductUpdateSchema = adminProductSchema.partial().extend({
   shortDescription: productShape.shortDescription.removeDefault().optional(),
   variants: productShape.variants.removeDefault().optional(),
+  colorOptions: productShape.colorOptions.removeDefault().optional(),
   images: productShape.images.removeDefault().optional(),
   isActive: productShape.isActive.removeDefault().optional(),
   isFeatured: productShape.isFeatured.removeDefault().optional(),

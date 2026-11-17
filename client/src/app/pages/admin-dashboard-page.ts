@@ -1,3 +1,5 @@
+import { ColorSwatchesComponent } from '../components/color-swatches';
+import { PRODUCT_COLOR_GROUPS, ProductColor } from '../data/product-colors';
 import { CommonModule } from '@angular/common';
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
@@ -9,6 +11,7 @@ import { AdminCategory, AdminCustomer, AdminCustomerDetail, AdminDashboardData, 
 type AdminTab = 'overview' | 'orders' | 'products' | 'categories' | 'customers' | 'reports' | 'shipping' | 'settings';
 
 interface ProductDraft {
+  colorOptions?: ProductColor[];
   id?: string;
   sku: string;
   slug: string;
@@ -219,7 +222,7 @@ function summarizeDemoCustomers(orders: AdminOrder[]): AdminCustomer[] {
 @Component({
   selector: 'app-admin-dashboard-page',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink],
+  imports: [ColorSwatchesComponent, CommonModule, FormsModule, RouterLink],
   styleUrl: './admin-products.scss',
   template: `
     <section class="dashboard" dir="rtl">
@@ -401,7 +404,7 @@ function summarizeDemoCustomers(orders: AdminOrder[]): AdminCustomer[] {
                         <option *ngFor="let status of paymentStatuses" [value]="status">{{ paymentLabel(status) }}</option>
                       </select><small>{{ paymentMethodLabel(order.paymentMethod) }}</small></td>
                       <td><details><summary>المنتجات ({{ formatNumber(order.items.length) }})</summary>
-                        <ul><li *ngFor="let item of order.items">{{ item.name.ar }} × {{ formatNumber(item.quantity) }} — {{ formatCurrency(item.unitPrice, order.currency) }}<p *ngIf="item.note" class="item-note">ملحوظة: {{ item.note }}</p></li></ul>
+                        <ul><li *ngFor="let item of order.items">{{ item.name.ar }} × {{ formatNumber(item.quantity) }} — {{ formatCurrency(item.unitPrice, order.currency) }}<p *ngIf="item.color" class="item-note">{{ item.color.ar || item.color.en }}</p><p *ngIf="item.note" class="item-note">ملحوظة: {{ item.note }}</p></li></ul>
                         <small *ngIf="order.customer.notes">ملاحظات: {{ order.customer.notes }}</small>
                       </details></td>
                     </tr>
@@ -446,6 +449,15 @@ function summarizeDemoCustomers(orders: AdminOrder[]): AdminCustomer[] {
                     <label>السعر بالجنيه<input type="number" name="price" [(ngModel)]="draft.price" min="0" required></label>
                     <label>سعر العرض (اختياري)<input type="number" name="salePrice" [(ngModel)]="draft.salePrice" min="0"></label>
                     <label>المخزون<input type="number" name="stock" [(ngModel)]="draft.stock" min="0" required></label>
+                    <section class="wide product-colors" aria-label="ألوان المنتج">
+                      <h4>ألوان المنتج المتاحة <small>({{ draft.colorOptions?.length || 0 }})</small></h4>
+                      <p>حددي الألوان المتوفرة فقط. اضغطي مرة أخرى لإلغاء اللون. المخزون إجمالي لكل الألوان.</p>
+                      <div *ngFor="let group of colorGroups">
+                        <h5>{{ group.title }}</h5>
+                        <app-color-swatches [colors]="group.colors" [selected]="selectedColorHexes()" [showNames]="true" (choose)="toggleProductColor($event)" />
+                      </div>
+                      <button *ngIf="draft.colorOptions?.length" type="button" class="secondary" (click)="draft.colorOptions = []">إلغاء تحديد الألوان</button>
+                    </section>
                     <div class="wide image-manager">
                       <div class="image-manager-heading">
                         <div>
@@ -601,7 +613,7 @@ function summarizeDemoCustomers(orders: AdminOrder[]): AdminCustomer[] {
                     <table class="wide-table"><thead><tr><th>رقم الطلب</th><th>التاريخ</th><th>المنتجات</th><th>الإجمالي</th><th>حالة الطلب</th><th>حالة الدفع</th></tr></thead><tbody>
                       <tr *ngFor="let order of detail.orders">
                         <td><strong>{{ order.orderNumber }}</strong></td><td>{{ formatDate(order.createdAt) }}</td>
-                        <td><details><summary>المنتجات ({{ formatNumber(order.items.length) }})</summary><ul><li *ngFor="let item of order.items">{{ item.name.ar || item.name.en || item.sku }} × {{ formatNumber(item.quantity) }}<p *ngIf="item.note" class="item-note">ملحوظة: {{ item.note }}</p></li></ul></details></td>
+                        <td><details><summary>المنتجات ({{ formatNumber(order.items.length) }})</summary><ul><li *ngFor="let item of order.items">{{ item.name.ar || item.name.en || item.sku }} × {{ formatNumber(item.quantity) }}<p *ngIf="item.color" class="item-note">{{ item.color.ar || item.color.en }}</p><p *ngIf="item.note" class="item-note">ملحوظة: {{ item.note }}</p></li></ul></details></td>
                         <td>{{ formatCurrency(order.total, order.currency) }}</td><td><span class="status">{{ statusLabel(order.orderStatus) }}</span></td><td><span class="status">{{ paymentLabel(order.paymentStatus) }}</span></td>
                       </tr>
                     </tbody></table>
@@ -1115,12 +1127,21 @@ export class AdminDashboardPageComponent {
     this.mobileMenuOpen.set(false);
   }
 
+  readonly colorGroups = PRODUCT_COLOR_GROUPS;
+  selectedColorHexes(): string[] { return this.productDraft?.colorOptions?.map(color => color.hex) ?? []; }
+  toggleProductColor(color: ProductColor): void {
+    if (!this.productDraft) return;
+    const current = this.productDraft.colorOptions ?? [];
+    this.productDraft.colorOptions = current.some(item => item.hex === color.hex)
+      ? current.filter(item => item.hex !== color.hex) : [...current, color];
+  }
+
   newProduct(): void {
     this.releaseDraftImagePreviews(this.productDraft);
     this.productDraft = {
       sku: '', slug: '', nameAr: '', nameEn: '', descriptionAr: '', descriptionEn: '',
       shortDescriptionAr: '', shortDescriptionEn: '', category: '', price: 0, stock: 0,
-      salePrice: undefined, variants: '', images: [], isActive: true, isFeatured: false, isBestSeller: false,
+      salePrice: undefined, colorOptions: [], variants: '', images: [], isActive: true, isFeatured: false, isBestSeller: false,
     };
   }
 
@@ -1133,6 +1154,7 @@ export class AdminDashboardPageComponent {
       category: typeof product.category === 'string' ? product.category : product.category._id,
       price: product.price, salePrice: product.salePrice, stock: this.productStock(product),
       variants: '',
+      colorOptions: (product.colorOptions ?? []).map(color => ({ ...color, name: { ...color.name } })),
       images: product.images.map((image) => ({
         id: this.newId('image'),
         url: image.url,
@@ -1364,13 +1386,14 @@ export class AdminDashboardPageComponent {
       price: Number(draft.price),
       salePrice: draft.salePrice == null || Number.isNaN(Number(draft.salePrice)) ? undefined : Number(draft.salePrice),
       stock: Number(draft.stock),
+      colorOptions: draft.colorOptions ?? [],
       variants,
       images: draft.images.map((image) => ({ url: image.url, publicId: image.publicId, alt: image.alt || draft.nameAr.trim() })),
       isActive: draft.isActive,
       isFeatured: draft.isFeatured,
       isBestSeller: draft.isBestSeller,
     };
-    const payload: AdminProductPayload = { sku: product.sku, slug: product.slug, name: product.name, description: product.description, shortDescription: product.shortDescription, category: draft.category, price: product.price, salePrice: product.salePrice ?? null, stock: product.stock, variants: product.variants, images: product.images, isActive: product.isActive, isFeatured: product.isFeatured, isBestSeller: product.isBestSeller };
+    const payload: AdminProductPayload = { sku: product.sku, slug: product.slug, name: product.name, description: product.description, shortDescription: product.shortDescription, category: draft.category, price: product.price, salePrice: product.salePrice ?? null, stock: product.stock, colorOptions: product.colorOptions, variants: product.variants, images: product.images, isActive: product.isActive, isFeatured: product.isFeatured, isBestSeller: product.isBestSeller };
     if (!this.adminApi) { this.products.set(draft.id ? this.products().map((item) => item._id === draft.id ? product : item) : [product, ...this.products()]); this.productDraft = null; this.persistDemo('تم حفظ المنتج.'); return; }
     this.isSaving.set(true);
     this.adminApi.saveProduct(payload, draft.id).subscribe({

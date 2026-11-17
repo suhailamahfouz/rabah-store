@@ -123,7 +123,7 @@ import { StoreService } from '../services/store.service';
         <h2>{{ lang() === 'ar' ? 'ملخص الطلب' : 'Order summary — ملخص الطلب' }}</h2>
         <div class="summary-list">
           <div class="summary-row" *ngFor="let item of cartItems()">
-            <span>{{ item.product.name[lang()] }} × {{ item.quantity }}<small class="item-note" *ngIf="item.note">{{ lang() === 'ar' ? 'ملحوظة: ' : 'Note: ' }}{{ item.note }}</small></span>
+            <span>{{ item.product.name[lang()] }} × {{ item.quantity }}<small class="item-note" *ngIf="item.color">{{ lang() === 'ar' ? 'اللون: ' : 'Colour — اللون: ' }}{{ item.colorName }}</small><small class="item-note" *ngIf="item.note">{{ lang() === 'ar' ? 'ملحوظة: ' : 'Note: ' }}{{ item.note }}</small></span>
             <strong>{{ item.product.price * item.quantity }} {{ currency() }}</strong>
           </div>
         </div>
@@ -497,7 +497,7 @@ export class CheckoutPageComponent {
       .cart()
       .map((item) => {
         const product = this.store.getProductById(item.productId);
-        return product ? { product, quantity: item.quantity, note: item.note } : null;
+        return product ? { product, quantity: item.quantity, note: item.note, color: item.color, colorName: this.store.colorName(product, item.color) } : null;
       })
       .filter((item): item is NonNullable<typeof item> => !!item),
   );
@@ -527,7 +527,8 @@ export class CheckoutPageComponent {
           city: form.city.trim(),
           address: form.address.trim(),
         },
-        items: this.cartItems().map(({ product, quantity, note }) => ({
+        items: this.cartItems().map(({ product, quantity, note, color }) => ({
+          ...(color ? { color } : {}),
           productSlug: product.slug,
           quantity,
           note: note?.trim() || undefined,

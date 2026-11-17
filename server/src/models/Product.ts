@@ -49,6 +49,8 @@ const productSchema = new Schema(
       _id: false,
     }],
     variants: [variantSchema],
+    // Display/order selections only: stock remains the product's general stock.
+    colorOptions: [{ name: bilingual(true, 60), hex: { type: String, required: true, match: /^#[0-9a-fA-F]{6}$/ }, _id: false }],
     stock: { type: Number, min: 0, default: 0 },
     isFeatured: { type: Boolean, default: false },
     isBestSeller: { type: Boolean, default: false },

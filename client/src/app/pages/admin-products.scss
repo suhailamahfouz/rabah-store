@@ -87,3 +87,7 @@
   .product-panel .section-heading h2 { gap: .4rem; }
   .product-panel .product-actions { gap: .35rem; }
 }
+:host .product-colors { padding: 1rem; border: 1px solid #e4d8ce; border-radius: 16px; background: #fcfaf7; }
+:host .product-colors h4 { margin: 0 0 .5rem; }
+:host .product-colors p { color: #807267; font-size: .8rem; line-height: 1.7; }
+:host .product-colors h5 { margin: 1rem 0 .7rem; }

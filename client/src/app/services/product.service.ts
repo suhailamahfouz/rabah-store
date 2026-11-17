@@ -1,3 +1,4 @@
+import { ProductColor } from '../data/product-colors';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { Observable, finalize, shareReplay } from 'rxjs';
@@ -6,6 +7,7 @@ import { Product } from '../models/store';
 const CATALOG_PAGE_SIZE = 24;
 
 interface ProductApiRecord {
+  colorOptions?: ProductColor[];
   id: string;
   slug: string;
   name: { ar: string; en: string };
@@ -218,6 +220,7 @@ export class ProductService {
       category: product.category,
       badge: product.badge,
       colors: product.colors,
+      colorOptions: product.colorOptions ?? [],
       variants: product.variants,
       images: product.images,
       features: product.features,

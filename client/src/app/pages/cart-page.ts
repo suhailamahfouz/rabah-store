@@ -23,6 +23,7 @@ import { StoreService } from '../services/store.service';
             <div class="item-copy">
               <h3>{{ item.product.name[lang()] }}</h3>
               <p>{{ item.product.shortDescription[lang()] }}</p>
+              <p *ngIf="item.color">{{ lang() === 'ar' ? 'اللون:' : 'Colour:' }} {{ item.colorName }}</p>
               <label class="item-note-editor">
                 <span>{{ lang() === 'ar' ? 'ملحوظة اختيارية لهذا المنتج' : 'Optional note for this item' }}</span>
                 <textarea rows="2" maxlength="500" [value]="item.note || ''" (input)="updateNote(item.productId, $event, item.cartIndex)" [placeholder]="lang() === 'ar' ? 'اكتبي أي تفاصيل تخص المنتج…' : 'Add any details about this item…'"></textarea>
@@ -314,7 +315,7 @@ export class CartPageComponent {
       .cart()
       .map((item, cartIndex) => {
         const product = this.store.getProductById(item.productId);
-        return product ? { ...item, product, cartIndex } : null;
+        return product ? { ...item, product, cartIndex, colorName: this.store.colorName(product, item.color) } : null;
       })
       .filter((item): item is NonNullable<typeof item> => !!item),
   );

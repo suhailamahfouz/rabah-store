@@ -49,7 +49,7 @@ import { Lang, Product } from '../models/store';
               <path d="M5 8h14l1 12H4L5 8Z"></path>
               <path d="M9 9V6a3 3 0 0 1 6 0v3"></path>
             </svg>
-            {{ outOfStock ? (lang === 'ar' ? 'نفد المخزون' : 'Out of stock') : (lang === 'ar' ? 'أضف إلى السلة' : 'Add to bag') }}
+            {{ outOfStock ? (lang === 'ar' ? 'نفد المخزون' : 'Out of stock') : product.colorOptions?.length ? (lang === 'ar' ? 'اختاري اللون' : 'Choose colour') : (lang === 'ar' ? 'أضف إلى السلة' : 'Add to bag') }}
           </button>
         </div>
       </div>

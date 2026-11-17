@@ -1,5 +1,6 @@
 import { StorefrontSkeletonComponent } from '../components/storefront-skeleton';
 import { StorefrontLoadingService } from '../services/storefront-loading.service';
+import { ColorSwatchesComponent } from '../components/color-swatches';
 import { CommonModule } from '@angular/common';
 import { Component, computed, ElementRef, inject, signal, ViewChild, DestroyRef } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -10,7 +11,7 @@ import { ProductService } from '../services/product.service';
 @Component({
   selector: 'app-product-detail-page',
   standalone: true,
-  imports: [StorefrontSkeletonComponent, CommonModule],
+  imports: [ColorSwatchesComponent, StorefrontSkeletonComponent, CommonModule],
   template: `
     <div class="container" *ngIf="!product()">
       <app-storefront-skeleton [lang]="lang()" [detail]="true" [failed]="!network.busy(productRequest()) && network.failed(productRequest())" (retry)="retryProduct()" />
@@ -48,6 +49,11 @@ import { ProductService } from '../services/product.service';
 
         <p class="description">{{ selectedProduct.description[lang()] }}</p>
 
+        <section class="product-colors" *ngIf="selectedProduct.colorOptions?.length" [attr.dir]="lang() === 'ar' ? 'rtl' : 'ltr'">
+          <p class="colors-label">{{ lang() === 'ar' ? 'الألوان' : 'COLOURS' }} <span *ngIf="chosenColor()">— {{ chosenColor()!.name[lang()] }}</span></p>
+          <app-color-swatches [colors]="selectedProduct.colorOptions!" [selected]="[selectedColor()]" [lang]="lang()" (choose)="selectedColor.set($event.hex)" />
+        </section>
+
         <div class="purchase-row">
           <div class="qty-selector">
             <button type="button" [disabled]="quantity() <= 1" [attr.aria-label]="lang() === 'ar' ? 'تقليل الكمية' : 'Decrease quantity'" (click)="decrementQty()">−</button>
@@ -74,6 +80,8 @@ import { ProductService } from '../services/product.service';
       :host {
         display: block;
       }
+      .product-colors { padding: 1.2rem 0; margin-bottom: 1rem; border-block: 1px solid #d8cec4; }
+      .colors-label { margin: 0 0 .8rem; font-size: .8rem; letter-spacing: .04em; }
 
       .container {
         width: min(1200px, calc(100% - 2rem));
@@ -250,8 +258,11 @@ export class ProductDetailPageComponent {
   readonly product = computed(() => this.store.getProductBySlug(this.slug()));
   readonly lang = this.store.lang;
   readonly currency = this.store.currency;
+  readonly selectedColor = signal('');
+  readonly chosenColor = computed(() => this.product()?.colorOptions?.find(color => color.hex === this.selectedColor()));
+  readonly colorReady = computed(() => !this.product()?.colorOptions?.length || !!this.chosenColor());
   readonly availableStock = computed(() => this.product()?.stock ?? 0);
-  readonly canAddToCart = computed(() => !!this.product() && this.quantity() > 0 && this.availableStock() >= this.quantity());
+  readonly canAddToCart = computed(() => !!this.product() && this.colorReady() && this.quantity() > 0 && this.availableStock() >= this.quantity());
   readonly quantity = signal(1);
   readonly purchaseLabel = computed(() => {
     const item = this.product();
@@ -264,6 +275,7 @@ export class ProductDetailPageComponent {
   readonly purchaseStatus = computed(() => {
     const ar = this.lang() === 'ar';
     if ((this.product()?.stock ?? 0) <= 0) return ar ? 'هذا المنتج غير متوفر حاليًا.' : 'This product is currently out of stock.';
+    if (!this.colorReady()) return ar ? 'اختاري اللون لإضافة المنتج إلى السلة.' : 'Choose a colour to add this item to your bag.';
     return ar ? 'الكمية المطلوبة أكبر من المخزون المتاح. قلّلي الكمية.' : 'The quantity exceeds available stock. Reduce the quantity.';
   });
 
@@ -271,6 +283,7 @@ export class ProductDetailPageComponent {
     this.route.params.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((params) => {
       this.closeImage();
       this.selectedImage.set(0);
+      this.selectedColor.set('');
       this.slug.set(params['slug'] ?? '');
       this.productsApi.loadBySlug(this.slug());
       this.quantity.set(1);
@@ -312,6 +325,7 @@ export class ProductDetailPageComponent {
       return;
     }
 
-    this.store.addToCart(item.id, this.quantity());
+    if (this.chosenColor()) this.store.addToCart(item.id, this.quantity(), this.chosenColor()!.hex);
+    else this.store.addToCart(item.id, this.quantity());
   }
 }

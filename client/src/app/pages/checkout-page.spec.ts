@@ -164,6 +164,18 @@ describe('CheckoutPageComponent', () => {
     expect(harness.routeNativeElement?.textContent).not.toContain('إنستا باي');
   });
 
+  it('sends the selected color with the order item', () => {
+    TestBed.inject(ProductService).products.update(products => products.map(product => ({ ...product, colorOptions: [{ hex: '#111111', name: { ar: 'أسود', en: 'Black' } }] })));
+    store.clearCart();
+    store.addToCart('product-id', 1, '#111111');
+    harness.detectChanges();
+    expect(harness.routeNativeElement?.textContent).toContain('أسود');
+    component.submit();
+    const request = http.expectOne('/api/orders');
+    expect(request.request.body.items[0].color).toBe('#111111');
+    request.flush({ error: { message: 'test response' } }, { status: 400, statusText: 'Test' });
+  });
+
   it('keeps the cart and surfaces an error when the API rejects an order', () => {
     component.submit();
 

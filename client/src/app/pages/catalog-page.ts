@@ -178,6 +178,8 @@ export class CatalogPageComponent {
   }
 
   addToCart(productId: string): void {
+    const product = this.store.getProductById(productId);
+    if (product?.colorOptions?.length) { void this.router.navigate(['/product', product.slug]); return; }
     this.store.addToCart(productId);
   }
 

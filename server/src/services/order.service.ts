@@ -151,6 +151,10 @@ async function decrementStock(items: OrderItemInput[]): Promise<{
       if (!product) {
         throw AppError.badRequest(`Product not found: ${item.productSlug ?? item.productId}`);
       }
+      const colors = product.colorOptions ?? [];
+      if ((colors.length && !item.color) || (item.color && !colors.some(color => color.hex?.toUpperCase() === item.color))) {
+        throw AppError.badRequest(`Choose an available color for ${product.slug}`);
+      }
 
       const updated = await Product.findOneAndUpdate(
         { _id: product._id, stock: { $gte: item.quantity } },
@@ -208,7 +212,9 @@ export async function createOrder(
       image: product.images?.[0]?.url ?? "",
       note: item.note ?? '',
       variantId: variant?._id,
-      color: variant
+      color: item.color
+        ? product.colorOptions?.find((color: { hex: string; name: { ar: string; en: string } }) => color.hex?.toUpperCase() === item.color)?.name
+        : variant
         ? {
             ar: String(variant.color?.name?.ar ?? ''),
             en: String(variant.color?.name?.en ?? ''),

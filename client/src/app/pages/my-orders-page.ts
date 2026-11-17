@@ -54,6 +54,7 @@ import { StoreService } from '../services/store.service';
                 <div class="item-details">
                   <strong>{{ item.name[store.lang()] || item.name.en || item.name.ar }}</strong>
                   <span *ngIf="item.note" class="item-note">{{ store.lang() === 'ar' ? 'ملحوظة:' : 'Note:' }} {{ item.note }}</span>
+                  <span *ngIf="item.color" class="item-note">{{ store.lang() === 'ar' ? 'اللون:' : 'Colour:' }} {{ item.color[store.lang()] }}</span>
                   <span class="quantity">{{ store.lang() === 'ar' ? 'الكمية:' : 'Quantity:' }} {{ item.quantity }}</span>
                 </div>
                 <strong class="item-total">{{ item.lineTotal | number:'1.0-2' }} {{ order.currency }}</strong>
