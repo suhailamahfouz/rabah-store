@@ -1,0 +1,1 @@
+test-report.md — Comprehensive Testing Report — RABAH Store test coverage and results (17/17 backend tests pass, image upload fix applied)

@@ -1,0 +1,15 @@
+User-agent: *
+Allow: /
+Disallow: /admin/
+Disallow: /cart
+Disallow: /checkout
+Disallow: /account/
+Disallow: /orders
+Disallow: /track-order
+Disallow: /login
+Disallow: /auth
+Allow: /api/sitemap.xml
+Disallow: /api/
+
+# The API generates this file from active products and categories.
+Sitemap: /api/sitemap.xml

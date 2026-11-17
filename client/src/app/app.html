@@ -1,0 +1,9 @@
+<app-storefront-intro *ngIf="introVisible() && !isAdminRoute()" />
+<app-header *ngIf="!isAdminRoute()"></app-header>
+
+<main class="page-shell">
+  <router-outlet></router-outlet>
+</main>
+
+<app-footer *ngIf="!isAdminRoute()"></app-footer>
+<app-cart-notification *ngIf="!isAdminRoute()"></app-cart-notification>

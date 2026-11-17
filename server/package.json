@@ -1,0 +1,49 @@
+{
+  "name": "rabah-server",
+  "version": "0.1.0",
+  "private": true,
+  "description": "RABAH online store API (independent from any physical-shop system)",
+  "main": "dist/server.js",
+  "engines": {
+    "node": ">=22.12"
+  },
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/server.js",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "node --import tsx --test src/services/shipping.service.test.ts src/services/seo.service.test.ts src/services/order-lifecycle.test.ts src/validators/product-variants.test.ts src/validators/request-contracts.test.ts src/models/order-customer-id.test.ts src/controllers/order.controller.test.ts src/controllers/auth.controller.test.ts src/middleware/auth.test.ts src/middleware/authorization.test.ts src/security-hardening.test.ts",
+    "seed": "tsx src/seed/seed.ts",
+    "sync-catalog": "tsx src/seed/syncCatalog.ts",
+    "create-admin": "tsx src/seed/createAdmin.ts",
+    "reset-admin-password": "tsx src/seed/resetAdminPassword.ts",
+    "migrate:color-inventory": "tsx src/migrations/migrate-color-inventory.ts",
+    "migrate:order-idempotency-index": "tsx src/migrations/migrate-order-idempotency-index.ts",
+    "migrate:performance-indexes": "tsx src/migrations/ensure-performance-indexes.ts"
+  },
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.6",
+    "dotenv": "^18.0.10",
+    "express": "^5.3.0",
+    "express-rate-limit": "^8.7.4",
+    "helmet": "^8.3.0",
+    "jsonwebtoken": "^9.0.3",
+    "mongoose": "^9.12.1",
+    "multer": "^2.5.0",
+    "sanitize-html": "^2.18.2",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@types/cookie-parser": "^1.4.10",
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/multer": "^2.3.0",
+    "@types/node": "^26.6.6",
+    "@types/sanitize-html": "^2.16.2",
+    "tsx": "^4.23.15",
+    "typescript": "~6.0.2"
+  }
+}

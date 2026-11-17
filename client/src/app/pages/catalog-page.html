@@ -1,0 +1,154 @@
+<section class="catalog-page" [attr.dir]="lang() === 'ar' ? 'rtl' : 'ltr'">
+  <section class="shop-hero" [class.category-hero]="!!activeCategory()">
+    <div class="hero-copy">
+      <p class="eyebrow">{{ lang() === 'ar' ? 'مجموعة رابح المختارة' : 'THE RABAH COLLECTION' }}</p>
+      <h1>
+        {{
+          activeCategory()?.label?.[lang()] ||
+            (lang() === 'ar' ? 'تسوقي كل القطع' : 'Shop all pieces')
+        }}
+      </h1>
+      <p class="hero-description">
+        {{
+          activeCategory()?.description?.[lang()] ||
+            (lang() === 'ar'
+              ? 'قطع منتقاة بعناية، لترافق تفاصيل يومك بأناقة.'
+              : 'Thoughtfully chosen pieces to bring a little more beauty to every day.')
+        }}
+      </p>
+      <div class="hero-note">
+        <span>{{ lang() === 'ar' ? 'أناقة تدوم' : 'MADE TO BE KEPT' }}</span>
+        <span aria-hidden="true"></span>
+        <span>{{
+          lang() === 'ar' ? 'توصيل مجاني فوق ١٠٠٠ ج.م.' : 'COMPLIMENTARY DELIVERY OVER EGP 1,000'
+        }}</span>
+      </div>
+    </div>
+    <div class="hero-art" aria-hidden="true">
+      <img *ngIf="heroImage()" class="hero-photo" [src]="heroImage()" alt="" />
+      <span class="art-caption">RABAH / EDIT 01</span>
+      <span class="art-monogram">R</span>
+      <span class="art-tagline">{{
+        lang() === 'ar' ? 'تفاصيل من اختيارك' : 'A softer kind of statement'
+      }}</span>
+    </div>
+  </section>
+
+  <section class="catalog-content" aria-labelledby="catalog-heading">
+    <div class="section-heading">
+      <div>
+        <p class="eyebrow">{{ lang() === 'ar' ? 'اكتشفي مجموعتنا' : 'FIND YOUR FAVOURITE' }}</p>
+        <h2 id="catalog-heading">
+          {{ lang() === 'ar' ? 'القطع المختارة' : 'The considered edit' }}
+        </h2>
+      </div>
+      <p class="result-count">
+        {{ filteredProducts().length }}
+        {{ lang() === 'ar' ? 'منتجات' : 'pieces' }}
+      </p>
+    </div>
+
+    <nav
+      class="category-nav"
+      [attr.aria-label]="lang() === 'ar' ? 'تصفحي حسب الفئة' : 'Browse by category'"
+    >
+      <button type="button" [class.active]="!activeCategory()" (click)="selectCategory('all')">
+        {{ lang() === 'ar' ? 'كل القطع' : 'Shop all' }}
+      </button>
+      <button
+        type="button"
+        *ngFor="let category of categories()"
+        [class.active]="activeCategory()?.slug === category.slug"
+        (click)="selectCategory(category.slug)"
+      >
+        {{ category.label[lang()] }}
+      </button>
+    </nav>
+
+    <section
+      class="filters"
+      [attr.aria-label]="lang() === 'ar' ? 'تصفية المنتجات' : 'Filter products'"
+    >
+      <label class="search-field">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <circle cx="10.8" cy="10.8" r="6.3"></circle>
+          <path d="m15.4 15.4 4.1 4.1"></path>
+        </svg>
+        <input
+          type="search"
+          [value]="searchQuery()"
+          (input)="setSearchQuery($event)"
+          [placeholder]="lang() === 'ar' ? 'ابحثي عن قطعة...' : 'Search the collection...'"
+          [attr.aria-label]="lang() === 'ar' ? 'ابحثي عن المنتجات' : 'Search products'"
+        />
+      </label>
+
+      <label class="select-filter">
+        <span>{{ lang() === 'ar' ? 'السعر' : 'Price' }}</span>
+        <select [value]="priceFilter()" (change)="setPriceFilter($event)">
+          <option value="all">{{ lang() === 'ar' ? 'كل الأسعار' : 'All prices' }}</option>
+          <option value="under-200">
+            {{ lang() === 'ar' ? 'أقل من ٢٠٠ ج.م.' : 'Under EGP 200' }}
+          </option>
+          <option value="200-350">
+            {{ lang() === 'ar' ? '٢٠٠ - ٣٥٠ ج.م.' : 'EGP 200 - 350' }}
+          </option>
+          <option value="over-350">
+            {{ lang() === 'ar' ? 'أكثر من ٣٥٠ ج.م.' : 'Over EGP 350' }}
+          </option>
+        </select>
+      </label>
+
+      <label class="select-filter sort-filter">
+        <span>{{ lang() === 'ar' ? 'ترتيب حسب' : 'Sort by' }}</span>
+        <select [value]="sortOrder()" (change)="setSortOrder($event)">
+          <option value="newest">{{ lang() === 'ar' ? 'الأحدث' : 'Newest' }}</option>
+          <option value="price-ascending">
+            {{ lang() === 'ar' ? 'السعر: الأقل أولاً' : 'Price: low to high' }}
+          </option>
+          <option value="price-descending">
+            {{ lang() === 'ar' ? 'السعر: الأعلى أولاً' : 'Price: high to low' }}
+          </option>
+        </select>
+      </label>
+    </section>
+
+    <app-storefront-skeleton *ngIf="network.busy(requestPrefix()) || network.failed(requestPrefix())" [lang]="lang()" [failed]="!network.busy(requestPrefix()) && network.failed(requestPrefix())" (retry)="retryProducts()" />
+    <div class="product-grid" *ngIf="filteredProducts().length; else emptyState">
+      <app-product-card
+        *ngFor="let product of filteredProducts()"
+        [product]="product"
+        [lang]="lang()"
+        [currency]="currency()"
+        [categoryLabel]="categoryLabel(product)"
+        [wishlisted]="isWishlisted(product.id)"
+        (wishlistToggle)="toggleWishlist($event)"
+        (addToCart)="addToCart($event)"
+      />
+    </div>
+
+    <button *ngIf="categoryId() === 'all' && hasMore()" class="reset-button" type="button" [disabled]="loading()" (click)="loadMore()">{{ lang() === 'ar' ? 'عرض المزيد من المنتجات' : 'Load more products' }}</button>
+    <ng-template #emptyState>
+      <div class="empty-state" *ngIf="!network.busy(requestPrefix()) && !network.failed(requestPrefix())">
+        <p class="eyebrow">
+          {{ lang() === 'ar' ? 'لم نعثر على القطعة المناسبة' : 'NOTHING HERE JUST YET' }}
+        </p>
+        <h3>{{ lang() === 'ar' ? 'لا توجد منتجات مطابقة' : 'No pieces match those filters' }}</h3>
+        <p>
+          {{
+            products().length === 0
+              ? lang() === 'ar'
+                ? 'أضيفي المنتجات من لوحة الإدارة لتظهر هنا.'
+                : 'Add products in the admin dashboard and they will appear here.'
+              : lang() === 'ar'
+                ? 'جرّبي تغيير كلمة البحث أو خيارات التصفية.'
+                : 'Try another search or adjust your filters.'
+          }}
+        </p>
+        <button *ngIf="products().length" type="button" class="reset-button" (click)="clearFilters()">
+          {{ lang() === 'ar' ? 'إعادة ضبط الفلاتر' : 'Clear all filters' }}
+        </button>
+      </div>
+    </ng-template>
+  </section>
+</section>

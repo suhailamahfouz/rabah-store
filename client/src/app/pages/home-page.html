@@ -1,0 +1,161 @@
+<section class="hero" [class.video-unavailable]="videoUnavailable">
+  <video
+    #heroVideo
+    class="hero-video"
+    [class.hidden]="videoUnavailable"
+    autoplay
+    muted
+    loop
+    playsinline
+    preload="metadata"
+    [poster]="heroPoster()"
+    (error)="videoUnavailable = true"
+    aria-hidden="true"
+  >
+    <source src="/videos/rabah-hero.mp4" type="video/mp4" />
+  </video>
+  <div class="hero-video-stack" aria-hidden="true">
+    <video
+      #mobileVideo
+      *ngFor="let row of [1, 2, 3]"
+      autoplay
+      muted
+      loop
+      playsinline
+      preload="auto"
+      (error)="onMobileVideoError()"
+    >
+      <source src="/videos/rabah-hero.mp4" type="video/mp4" />
+    </video>
+  </div>
+  <div class="hero-fallback" [class.visible]="videoUnavailable" aria-hidden="true">
+    <img [src]="heroPoster()" alt="" />
+  </div>
+  <div class="hero-shade" aria-hidden="true"></div>
+
+  <div class="hero-content">
+    <span class="eyebrow">{{
+      lang() === 'ar' ? 'أناقة لكل لحظة' : 'A considered kind of elegance'
+    }}</span>
+    <h1>{{ lang() === 'ar' ? 'قطعٌ تعبّر عنك.' : 'Pieces that feel like you.' }}</h1>
+    <p>
+      {{
+        lang() === 'ar'
+          ? 'اختيارات مدروسة، وتفاصيل تبقى معك.'
+          : 'Thoughtfully chosen. Beautifully lived in.'
+      }}
+    </p>
+    <div class="hero-actions">
+      <a routerLink="/catalog" class="button button-light">
+        {{ lang() === 'ar' ? 'اكتشفي المجموعة' : 'Discover the collection' }}
+      </a>
+      <a routerLink="/catalog" class="button button-outline">
+        {{ lang() === 'ar' ? 'تسوقي الآن' : 'Shop now' }}
+      </a>
+    </div>
+  </div>
+
+</section>
+
+<section class="site-promo" *ngIf="promoBanner()?.isActive && promoBanner()?.image">
+  <img [src]="promoBanner()!.image" alt="" />
+</section>
+
+<section class="curated-section" *ngIf="!featuredProducts().length && (network.busy('/api/products?limit=24&page=1') || network.failed('/api/products?limit=24&page=1'))">
+  <div class="section-heading"><h2>{{ lang() === 'ar' ? '?????? ????' : 'Best Sellers' }}</h2></div>
+  <app-storefront-skeleton [lang]="lang()" [failed]="!network.busy('/api/products?limit=24&page=1') && network.failed('/api/products?limit=24&page=1')" (retry)="retryProducts()" />
+</section>
+<section class="curated-section" *ngIf="featuredProducts().length">
+  <div class="section-heading">
+    <div>
+      <p class="eyebrow">{{ lang() === 'ar' ? 'اختياراتكم المفضلة' : 'CUSTOMER FAVORITES' }}</p>
+      <h2>{{ lang() === 'ar' ? 'البيست سيلر' : 'Best Sellers' }}</h2>
+    </div>
+    <div class="heading-actions">
+      <a routerLink="/catalog" class="view-all">
+        {{ lang() === 'ar' ? 'اكتشفي الكل' : 'Explore all' }}
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M7 17 17 7M8 7h9v9"></path>
+        </svg>
+      </a>
+      <div
+        class="carousel-controls"
+        [attr.aria-label]="lang() === 'ar' ? 'التحكم بالمنتجات' : 'Product carousel controls'"
+      >
+        <button
+          type="button"
+          (click)="scrollProducts(-1)"
+          [attr.aria-label]="lang() === 'ar' ? 'المنتجات السابقة' : 'Previous products'"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m14 6-6 6 6 6"></path></svg>
+        </button>
+        <button
+          type="button"
+          (click)="scrollProducts(1)"
+          [attr.aria-label]="lang() === 'ar' ? 'المنتجات التالية' : 'Next products'"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m10 6 6 6-6 6"></path></svg>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div #productCarousel class="product-carousel" dir="ltr">
+    <article class="product-card" *ngFor="let product of featuredProducts()">
+      <a
+        class="product-image"
+        [routerLink]="['/product', product.slug]"
+        [attr.aria-label]="product.name[lang()]"
+      >
+        <img [src]="product.images[0]" [alt]="product.name[lang()]" loading="lazy" />
+        <span class="product-badge stock-badge" *ngIf="product.stock <= 0">{{ lang() === 'ar' ? 'نفد المخزون' : 'Out of stock' }}</span>
+        <span class="product-badge" *ngIf="product.stock > 0 && product.badge">{{ product.badge[lang()] }}</span>
+      </a>
+      <div class="product-info" [attr.dir]="lang() === 'ar' ? 'rtl' : 'ltr'">
+        <div class="product-title-row">
+          <a [routerLink]="['/product', product.slug]">{{ product.name[lang()] }}</a>
+        </div>
+        <p>{{ product.shortDescription[lang()] }}</p>
+        <div class="price-row">
+          <strong>{{ product.price }} {{ currency() }}</strong>
+          <span
+            class="original-price"
+            *ngIf="product.originalPrice && product.originalPrice > product.price"
+            >{{ product.originalPrice }} {{ currency() }}</span
+          >
+        </div>
+      </div>
+    </article>
+  </div>
+</section>
+
+<section class="featured-collection-visual" *ngIf="featuredCollection()?.image">
+  <a [routerLink]="featuredCollectionLink()" aria-label="Featured collection">
+    <img [src]="featuredCollection()!.image" alt="" loading="lazy" />
+  </a>
+</section>
+
+<section class="categories-section">
+  <div class="section-heading categories-heading">
+    <div>
+      <p class="eyebrow">{{ lang() === 'ar' ? 'تصفحي' : 'Browse' }}</p>
+      <h2>{{ lang() === 'ar' ? 'تسوّقي حسب الفئة' : 'Shop by Category' }}</h2>
+      <p class="categories-subtitle">
+        {{
+          lang() === 'ar'
+            ? 'اكتشفي مجموعاتنا المختارة بعناية'
+            : 'Explore our carefully curated collections'
+        }}
+      </p>
+    </div>
+  </div>
+
+  <app-storefront-skeleton *ngIf="!categories().length && (network.busy('/api/categories') || network.failed('/api/categories'))" [lang]="lang()" [failed]="!network.busy('/api/categories') && network.failed('/api/categories')" (retry)="retryCategories()" />
+  <div class="category-grid">
+    <app-category-card
+      *ngFor="let category of categories()"
+      [category]="category"
+      [lang]="lang()"
+    />
+  </div>
+</section>

@@ -1,0 +1,125 @@
+:root {
+  color-scheme: light;
+  --page-bg: #f7f3ed;
+  --surface: #fffdf9;
+  --surface-alt: #f1e9df;
+  --text: #29221f;
+  --muted: #82776e;
+  --accent: #54212c;
+  --accent-soft: #efe5dc;
+  --border: rgba(84, 33, 44, 0.12);
+  --arabic-font: -apple-system, BlinkMacSystemFont, 'SF Arabic', 'Geeza Pro', 'Segoe UI', Tahoma, sans-serif;
+}
+
+html,
+body {
+  min-height: 100%;
+  margin: 0;
+  background: var(--page-bg);
+  color: var(--text);
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+body {
+  min-height: 100vh;
+}
+
+html[lang='ar'] body {
+  font-family: var(--arabic-font);
+  font-weight: 700;
+  text-align: start;
+}
+
+/* Override the Latin display fonts only in the Arabic interface. */
+html[lang='ar'] :is(h1, h2, h3, h4, p, a, button, input, textarea, select, label, span, small, strong, th, td) {
+  font-family: var(--arabic-font) !important;
+  font-weight: 700;
+  letter-spacing: normal !important;
+}
+
+html[lang='ar'] .hero-content {
+  direction: rtl;
+  text-align: right;
+}
+
+html[lang='ar'] .hero-content h1 {
+  line-height: 1.35;
+}
+
+img {
+  max-width: 100%;
+}
+
+.item-note { display: block; white-space: pre-wrap; overflow-wrap: anywhere; margin-block: .4rem; }
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+@media (max-width: 1000px) {
+  body .dashboard .workspace { grid-template-columns: 210px minmax(0, 1fr); gap: .8rem; }
+  body .dashboard .sidebar { padding: 1rem; }
+  body .dashboard .stat-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  body .dashboard .report-grid { grid-template-columns: 1fr; }
+}
+
+body .dashboard .side-bottom a svg { width: 1rem; height: 1rem; fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.7; }
+
+@media (max-width: 720px) {
+  body .dashboard .workspace { grid-template-columns: 1fr; }
+  body .dashboard .sidebar { position: fixed; z-index: 51; top: 0; right: 0; width: min(300px, 86vw); height: 100vh; height: 100dvh; min-height: 0; padding: 1.25rem; border-radius: 0; transform: translateX(105%); visibility: hidden; transition: transform 180ms ease-out, visibility 0s linear 180ms; }
+  body .dashboard .sidebar.mobile-open { transform: translateX(0); visibility: visible; transition-delay: 0s; }
+  body .dashboard .brand { padding-bottom: .8rem; }
+  body .dashboard .brand img { width: 2.5rem; height: 2.5rem; }
+  body .dashboard .sidebar-close { display: grid; position: absolute; top: 1.2rem; left: 1.2rem; width: 2.35rem; height: 2.35rem; place-items: center; padding: 0; border: 1px solid rgba(255,255,255,.2); background: transparent; }
+  body .dashboard .side-label { margin-top: 1.1rem; }
+  body .dashboard .sidebar nav { display: grid; gap: .3rem; overflow: visible; margin-top: 0; }
+  body .dashboard .sidebar nav button { width: 100%; padding: .75rem .7rem; font-size: .88rem; }
+  body .dashboard .sidebar nav button.selected { box-shadow: inset -3px 0 #b89a63; }
+  body .dashboard .nav-icon { width: 1.6rem; }
+  body .dashboard .side-bottom { display: grid; }
+  body .dashboard button.mobile-menu-toggle { display: flex; align-items: center; gap: .5rem; margin: 0 0 .85rem auto; padding: .55rem .85rem; border-color: #e6d9cd; background: #fffdf9; color: #641b2e; }
+  body .dashboard button.mobile-sidebar-backdrop { display: block; position: fixed; z-index: 50; inset: 0; width: 100%; height: 100%; padding: 0; border: 0; border-radius: 0; background: rgba(25, 16, 18, .45); }
+  body .dashboard .main-content { padding-top: .25rem; }
+  body .dashboard .form-grid, body .dashboard .report-grid, body .dashboard .report-stats { grid-template-columns: 1fr; }
+  body .dashboard .wide { grid-column: auto; }
+  body .dashboard .panel { padding: 1rem; }
+  body .dashboard .section-heading { align-items: flex-start; }
+}
+
+@media (max-width: 470px) {
+  body .dashboard { padding-inline: .6rem; }
+  body .dashboard .demo-banner { font-size: .72rem; }
+  body .dashboard .page-heading, body .dashboard .section-heading { align-items: flex-start; flex-direction: column; }
+  body .dashboard .stat-grid { gap: .55rem; }
+  body .dashboard .stat-card { padding: .8rem; }
+  body .dashboard .stat-card strong { font-size: 1.3rem; }
+  body .dashboard .notice { align-items: flex-start; flex-wrap: wrap; }
+  body .dashboard .notice p { min-width: calc(100% - 2rem); }
+  body .dashboard .chart { gap: .35rem; }
+  body .dashboard .chart-column strong { font-size: .54rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body .dashboard .sidebar { transition: none; }
+}
+
+body .dashboard .image-manager { display:grid; gap:.75rem; padding:.85rem; border:1px dashed #d8c6b7; border-radius:.75rem; background:#fffdf9; }
+body .dashboard .image-manager-heading { display:flex; align-items:center; justify-content:space-between; gap:.75rem; }
+body .dashboard .image-manager-heading strong, body .dashboard .image-manager-heading small { display:block; }
+body .dashboard .image-manager-heading strong { color:#5b5149; font-size:.84rem; }
+body .dashboard .image-manager-heading small, body .dashboard .image-empty { margin:.22rem 0 0; color:#877c72; font-size:.74rem; line-height:1.5; }
+body .dashboard .file-input { position:absolute; width:1px; height:1px; opacity:0; pointer-events:none; }
+body .dashboard .image-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(126px,1fr)); gap:.7rem; }
+body .dashboard .image-card { min-width:0; padding:.4rem; border:1px solid #e6d9cd; border-radius:.7rem; background:#faf7f1; }
+body .dashboard .image-card.primary { border-color:#b89a63; box-shadow:0 0 0 1px rgba(184,154,99,.2); }
+body .dashboard .image-preview { position:relative; aspect-ratio:1; overflow:hidden; border-radius:.48rem; background:#f1e9df; }
+body .dashboard .image-preview img { width:100%; height:100%; object-fit:cover; }
+body .dashboard .primary-badge, body .dashboard .uploading-badge { position:absolute; inset-inline-start:.35rem; padding:.18rem .36rem; border-radius:999px; background:rgba(69,17,31,.88); color:#fff; font-size:.64rem; }
+body .dashboard .primary-badge { top:.35rem; }
+body .dashboard .uploading-badge { right:.35rem; bottom:.35rem; left:auto; background:rgba(92,69,43,.9); }
+body .dashboard .image-actions { display:flex; flex-wrap:wrap; gap:.3rem; margin-top:.45rem; }
+body .dashboard .image-actions button { flex:1 1 auto; min-width:2rem; padding:.34rem .45rem; font-size:.7rem; }
