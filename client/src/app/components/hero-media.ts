@@ -4,148 +4,145 @@ import { AfterViewInit, Component, ElementRef, Input, OnDestroy, ViewChild } fro
   selector: 'app-hero-media',
   standalone: true,
   template: `
-    <!-- Keep the real WebKit video layer in the first row. Safari can leave a
-         canvas painted from a later video layer black when the canvas precedes
-         that layer in the compositor. Rows two and three mirror this source. -->
-    <video #source autoplay muted loop playsinline preload="auto" [poster]="poster" aria-hidden="true">
+    <video #primary class="primary-video" autoplay muted loop playsinline preload="auto" [poster]="poster" aria-hidden="true">
       <source src="/videos/rabah-hero.mp4" type="video/mp4" />
     </video>
-    <canvas #middle class="mobile-copy" [style.background-image]="poster ? 'url(' + poster + ')' : null" aria-hidden="true"></canvas>
-    <canvas #bottom class="mobile-copy" [style.background-image]="poster ? 'url(' + poster + ')' : null" aria-hidden="true"></canvas>
+    <video #secondary class="mobile-video" muted loop playsinline preload="auto" [poster]="poster" aria-hidden="true">
+      <source src="/videos/rabah-hero.mp4" type="video/mp4" />
+    </video>
   `,
   styles: [`
     :host { position: absolute; inset: 0; display: block; pointer-events: none; background: #332325; }
     video { display: block; width: 100%; height: 100%; object-fit: cover; object-position: 70% center; }
-    .mobile-copy { display: none; }
+    .mobile-video { display: none; }
     @media (max-width: 640px) {
-      :host { display: grid; grid-template-rows: repeat(3, minmax(0, 1fr)); gap: 2px; }
-      video, .mobile-copy { display: block; width: 100%; height: 100%; min-width: 0; min-height: 0; max-width: 100%; max-height: 100%; object-fit: cover; object-position: center; }
-      .mobile-copy { background-size: contain; background-repeat: no-repeat; background-position: center; }
+      :host { display: grid; grid-template-rows: repeat(2, minmax(0, 1fr)); gap: 2px; }
+      video, .mobile-video { display: block; width: 100%; height: 100%; min-width: 0; min-height: 0; max-width: 100%; max-height: 100%; object-fit: cover; object-position: center; }
     }
     @supports (-webkit-touch-callout: none) {
       @media (max-width: 640px) {
         :host { gap: 0; }
-        video, .mobile-copy { object-fit: contain; object-position: center center; }
+        video, .mobile-video { object-fit: contain; object-position: center center; }
       }
     }
   `],
 })
 export class HeroMediaComponent implements AfterViewInit, OnDestroy {
   @Input() poster = '';
-  @ViewChild('source', { static: true }) private source!: ElementRef<HTMLVideoElement>;
-  @ViewChild('middle', { static: true }) private middle!: ElementRef<HTMLCanvasElement>;
-  @ViewChild('bottom', { static: true }) private bottom!: ElementRef<HTMLCanvasElement>;
-  private frameId?: number;
-  private videoFrame = false;
+  @ViewChild('primary', { static: true }) private primary!: ElementRef<HTMLVideoElement>;
+  @ViewChild('secondary', { static: true }) private secondary!: ElementRef<HTMLVideoElement>;
   private destroyed = false;
   private visible = true;
-  private pending = false;
   private observer?: IntersectionObserver;
+  private readonly pending = new Set<HTMLVideoElement>();
   private readonly cleanup: Array<() => void> = [];
   private readonly mobile = window.matchMedia('(max-width: 640px)');
 
   ngAfterViewInit(): void {
-    const video = this.source.nativeElement;
-    video.muted = video.defaultMuted = true;
-    video.playsInline = true;
-    // Set the content attributes too. WebKit evaluates them when deciding
-    // whether autoplay is allowed, before Angular's property writes settle.
-    video.setAttribute('muted', '');
-    video.setAttribute('playsinline', '');
-    video.setAttribute('webkit-playsinline', '');
+    const primary = this.primary.nativeElement;
+    const secondary = this.secondary.nativeElement;
+    this.configure(primary);
+    this.configure(secondary);
+
     const resume = () => this.resume();
-    this.listen(video, 'loadeddata', () => { this.paint(); this.resume(); });
-    this.listen(video, 'loadedmetadata', resume);
-    this.listen(video, 'canplay', resume);
-    this.listen(video, 'playing', () => { this.paint(); this.scheduleFrame(); });
-    // Older iOS releases can suspend video-frame callbacks while still
-    // advancing playback. timeupdate keeps both mirrors from freezing.
-    this.listen(video, 'timeupdate', () => this.paint());
-    this.listen(video, 'pause', () => this.cancelFrame());
-    this.listen(video, 'error', () => this.cancelFrame());
+    for (const video of [primary, secondary]) {
+      this.listen(video, 'loadedmetadata', () => { this.syncSecondary(true); this.resume(); });
+      this.listen(video, 'canplay', resume);
+    }
+    this.listen(primary, 'playing', () => { this.syncSecondary(true); this.resume(); });
+    this.listen(primary, 'timeupdate', () => this.syncSecondary());
+    this.listen(primary, 'seeked', () => this.syncSecondary(true));
+
     this.listen(document, 'visibilitychange', () => {
-      if (document.visibilityState === 'hidden') { video.pause(); this.cancelFrame(); }
+      if (document.visibilityState === 'hidden') this.pauseAll();
       else this.resume();
     });
     this.listen(window, 'pageshow', resume);
     this.listen(window, 'focus', resume);
-    // Call play synchronously inside the user-activation event. This recovers
-    // muted autoplay when iOS power/data settings initially decline it.
+    // Keep play() inside the activation event so iOS can recover if its first
+    // muted-autoplay attempt was declined by power or data-saving settings.
     this.listen(document, 'touchstart', resume);
     this.listen(document, 'pointerdown', resume);
-    const resize = () => { this.paint(); this.resume(); };
-    this.mobile.addEventListener?.('change', resize);
-    this.cleanup.push(() => this.mobile.removeEventListener?.('change', resize));
+
+    const layoutChanged = () => {
+      if (!this.mobile.matches) secondary.pause();
+      this.syncSecondary(true);
+      this.resume();
+    };
+    this.mobile.addEventListener?.('change', layoutChanged);
+    this.cleanup.push(() => this.mobile.removeEventListener?.('change', layoutChanged));
+
     if (typeof IntersectionObserver !== 'undefined') {
       this.observer = new IntersectionObserver(entries => {
         this.visible = entries.some(entry => entry.isIntersecting);
         if (this.visible) this.resume();
-        else { video.pause(); this.cancelFrame(); }
+        else this.pauseAll();
       });
-      // Observe the entire composition, not just the source's middle row.
-      this.observer.observe(video.parentElement!);
+      this.observer.observe(primary.parentElement!);
     }
     this.resume();
   }
 
+  private configure(video: HTMLVideoElement): void {
+    video.muted = video.defaultMuted = true;
+    video.playsInline = true;
+    // WebKit checks the content attributes as well as the DOM properties when
+    // deciding whether inline autoplay is permitted.
+    video.setAttribute('muted', '');
+    video.setAttribute('playsinline', '');
+    video.setAttribute('webkit-playsinline', '');
+  }
+
   private resume(): void {
-    const video = this.source.nativeElement;
-    if (this.destroyed || !this.visible || document.visibilityState === 'hidden' || video.error) return;
-    if (!video.paused) { this.scheduleFrame(); return; }
-    if (this.pending) return;
+    const primary = this.primary.nativeElement;
+    const secondary = this.secondary.nativeElement;
+    if (this.destroyed || !this.visible || document.visibilityState === 'hidden') return;
+
+    this.play(primary);
+    if (this.mobile.matches) {
+      this.syncSecondary(true);
+      this.play(secondary);
+    } else {
+      secondary.pause();
+    }
+  }
+
+  private play(video: HTMLVideoElement): void {
+    if (!video.paused || video.error || this.pending.has(video)) return;
     video.muted = true;
-    this.pending = true;
+    this.pending.add(video);
     void video.play().then(() => {
-      this.pending = false;
-      if (this.destroyed || !this.visible || document.visibilityState === 'hidden') video.pause();
-      else this.scheduleFrame();
+      this.pending.delete(video);
+      if (this.destroyed || !this.visible || document.visibilityState === 'hidden'
+        || (video === this.secondary.nativeElement && !this.mobile.matches)) {
+        video.pause();
+        return;
+      }
+      this.syncSecondary(true);
     }, () => {
-      // Autoplay rejection is recoverable on readiness/visibility/user gesture.
-      this.pending = false;
+      // Readiness, visibility and real user gestures retry blocked autoplay.
+      this.pending.delete(video);
     });
   }
 
-  private paint(): void {
-    const video = this.source.nativeElement;
-    if (!this.mobile.matches || video.readyState < 2 || !video.videoWidth || !video.videoHeight) return;
-    // The two copies share one decoder and one timeline. Limit canvas memory.
-    const width = Math.min(720, video.videoWidth);
-    const height = Math.round(width * video.videoHeight / video.videoWidth);
-    for (const canvas of [this.middle.nativeElement, this.bottom.nativeElement]) {
-      if (canvas.width !== width) canvas.width = width;
-      if (canvas.height !== height) canvas.height = height;
+  private syncSecondary(force = false): void {
+    if (!this.mobile.matches) return;
+    const primary = this.primary.nativeElement;
+    const secondary = this.secondary.nativeElement;
+    if (primary.readyState < 1 || secondary.readyState < 1) return;
+    const drift = Math.abs(secondary.currentTime - primary.currentTime);
+    if (force || drift > 0.12) {
       try {
-        const context = canvas.getContext('2d', { alpha: false });
-        if (!context) continue;
-        context.imageSmoothingEnabled = true;
-        context.imageSmoothingQuality = 'high';
-        context.drawImage(video, 0, 0, width, height);
+        secondary.currentTime = primary.currentTime;
       } catch {
-        // Keep the poster visible and try the next decoded frame. A temporary
-        // WebKit InvalidStateError must not stop the other mirrored row.
+        // iOS can reject seeking briefly while metadata is still settling.
       }
     }
   }
 
-  private scheduleFrame(): void {
-    const video = this.source.nativeElement;
-    if (this.frameId !== undefined || this.destroyed || !this.visible || !this.mobile.matches || video.paused || document.visibilityState === 'hidden') return;
-    const render = () => {
-      this.frameId = undefined;
-      if (this.destroyed) return;
-      this.paint();
-      this.scheduleFrame();
-    };
-    this.videoFrame = typeof video.requestVideoFrameCallback === 'function'
-      && typeof video.cancelVideoFrameCallback === 'function';
-    this.frameId = this.videoFrame ? video.requestVideoFrameCallback(render) : requestAnimationFrame(render);
-  }
-
-  private cancelFrame(): void {
-    if (this.frameId === undefined) return;
-    if (this.videoFrame) this.source.nativeElement.cancelVideoFrameCallback(this.frameId);
-    else cancelAnimationFrame(this.frameId);
-    this.frameId = undefined;
+  private pauseAll(): void {
+    this.primary.nativeElement.pause();
+    this.secondary.nativeElement.pause();
   }
 
   private listen(target: EventTarget, name: string, handler: () => void): void {
@@ -157,7 +154,7 @@ export class HeroMediaComponent implements AfterViewInit, OnDestroy {
     this.destroyed = true;
     this.observer?.disconnect();
     this.cleanup.forEach(remove => remove());
-    this.cancelFrame();
-    this.source.nativeElement.pause();
+    this.pending.clear();
+    this.pauseAll();
   }
 }
