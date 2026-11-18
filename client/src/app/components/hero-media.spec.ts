@@ -2,31 +2,29 @@ import { TestBed } from '@angular/core/testing';
 import { vi } from 'vitest';
 import { HeroMediaComponent } from './hero-media';
 
-describe('Two synchronized native mobile hero videos', () => {
-  let mobile = true;
-  let playback: WeakMap<HTMLMediaElement, boolean>;
+describe('One decoder with three mobile canvas panels', () => {
+  let paused: boolean;
+  let frame: VideoFrameRequestCallback;
+  const drawImage = vi.fn();
 
   beforeEach(() => {
-    mobile = true;
-    playback = new WeakMap<HTMLMediaElement, boolean>();
-    vi.stubGlobal('matchMedia', () => ({
-      get matches() { return mobile; },
-      addEventListener() {},
-      removeEventListener() {},
-    }));
+    paused = true;
+    drawImage.mockReset();
+    vi.stubGlobal('matchMedia', () => ({ matches: true, addEventListener() {}, removeEventListener() {} }));
     vi.stubGlobal('IntersectionObserver', undefined);
     vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('visible');
-    vi.spyOn(HTMLMediaElement.prototype, 'paused', 'get').mockImplementation(function (this: HTMLMediaElement) {
-      return playback.get(this) ?? true;
-    });
+    vi.spyOn(HTMLMediaElement.prototype, 'paused', 'get').mockImplementation(() => paused);
     vi.spyOn(HTMLMediaElement.prototype, 'readyState', 'get').mockReturnValue(2);
-    vi.spyOn(HTMLMediaElement.prototype, 'play').mockImplementation(function (this: HTMLMediaElement) {
-      playback.set(this, false);
-      return Promise.resolve();
+    vi.spyOn(HTMLVideoElement.prototype, 'videoWidth', 'get').mockReturnValue(1920);
+    vi.spyOn(HTMLVideoElement.prototype, 'videoHeight', 'get').mockReturnValue(1080);
+    vi.spyOn(HTMLMediaElement.prototype, 'play').mockImplementation(async () => { paused = false; });
+    vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(() => { paused = true; });
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue({ drawImage } as unknown as CanvasRenderingContext2D);
+    Object.defineProperty(HTMLVideoElement.prototype, 'requestVideoFrameCallback', {
+      configurable: true,
+      value: vi.fn(callback => { frame = callback; return 1; }),
     });
-    vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(function (this: HTMLMediaElement) {
-      playback.set(this, true);
-    });
+    Object.defineProperty(HTMLVideoElement.prototype, 'cancelVideoFrameCallback', { configurable: true, value: vi.fn() });
     TestBed.configureTestingModule({ imports: [HeroMediaComponent] });
   });
 
@@ -34,60 +32,63 @@ describe('Two synchronized native mobile hero videos', () => {
     TestBed.resetTestingModule();
     vi.restoreAllMocks();
     vi.unstubAllGlobals();
+    Reflect.deleteProperty(HTMLVideoElement.prototype, 'requestVideoFrameCallback');
+    Reflect.deleteProperty(HTMLVideoElement.prototype, 'cancelVideoFrameCallback');
   });
 
-  it('uses two native inline videos and no canvas on mobile', async () => {
+  it('places one decoder before all three visible canvas panels', async () => {
     const fixture = TestBed.createComponent(HeroMediaComponent);
     fixture.detectChanges();
     await Promise.resolve();
-    const videos = fixture.nativeElement.querySelectorAll('video') as NodeListOf<HTMLVideoElement>;
-    expect(videos).toHaveLength(2);
-    expect(fixture.nativeElement.querySelector('canvas')).toBeNull();
-    expect(HTMLMediaElement.prototype.play).toHaveBeenCalledTimes(2);
-    for (const video of videos) {
-      expect(video.muted && video.defaultMuted && video.playsInline).toBe(true);
-      expect(video.hasAttribute('webkit-playsinline')).toBe(true);
-    }
+    const video = fixture.nativeElement.querySelector('video') as HTMLVideoElement;
+    expect(fixture.nativeElement.querySelectorAll('video')).toHaveLength(1);
+    expect(fixture.nativeElement.querySelectorAll('canvas')).toHaveLength(3);
+    expect(fixture.nativeElement.children[0]).toBe(video);
+    expect([...fixture.nativeElement.children].slice(1).every((item: Element) => item.tagName === 'CANVAS')).toBe(true);
+    expect(video.muted && video.defaultMuted && video.playsInline).toBe(true);
+    expect(video.hasAttribute('webkit-playsinline')).toBe(true);
   });
 
-  it('keeps the second video on the first video timeline', async () => {
+  it('paints the same decoded frame into all three panels', async () => {
     const fixture = TestBed.createComponent(HeroMediaComponent);
     fixture.detectChanges();
     await Promise.resolve();
-    const [primary, secondary] = fixture.nativeElement.querySelectorAll('video') as NodeListOf<HTMLVideoElement>;
-    primary.currentTime = 8;
-    secondary.currentTime = 3;
-    primary.dispatchEvent(new Event('timeupdate'));
-    expect(secondary.currentTime).toBe(8);
+    const video = fixture.nativeElement.querySelector('video') as HTMLVideoElement;
+    drawImage.mockClear();
+    frame(0, {} as VideoFrameCallbackMetadata);
+    expect(drawImage).toHaveBeenCalledTimes(3);
+    expect(drawImage.mock.calls.every(args => args[0] === video)).toBe(true);
+    expect(drawImage.mock.calls[0].slice(1)).toEqual([0, 0, 480, 270]);
   });
 
-  it('retries an autoplay rejection on a real touch gesture', async () => {
+  it('continues painting the other panels if one draw temporarily fails', async () => {
+    const fixture = TestBed.createComponent(HeroMediaComponent);
+    fixture.detectChanges();
+    await Promise.resolve();
+    drawImage.mockReset();
+    drawImage.mockImplementationOnce(() => { throw new DOMException('Frame unavailable', 'InvalidStateError'); });
+    frame(0, {} as VideoFrameCallbackMetadata);
+    expect(drawImage).toHaveBeenCalledTimes(3);
+  });
+
+  it('retries blocked autoplay on the first real touch', async () => {
     vi.mocked(HTMLMediaElement.prototype.play).mockRejectedValueOnce(new DOMException('Blocked', 'NotAllowedError'));
     const fixture = TestBed.createComponent(HeroMediaComponent);
     fixture.detectChanges();
     await Promise.resolve();
     document.dispatchEvent(new Event('touchstart'));
     await Promise.resolve();
-    expect(HTMLMediaElement.prototype.play).toHaveBeenCalledTimes(3);
+    expect(HTMLMediaElement.prototype.play).toHaveBeenCalledTimes(2);
   });
 
-  it('keeps desktop on one active video', async () => {
-    mobile = false;
+  it('stops playback and removes listeners after leaving the page', async () => {
     const fixture = TestBed.createComponent(HeroMediaComponent);
     fixture.detectChanges();
     await Promise.resolve();
-    expect(HTMLMediaElement.prototype.play).toHaveBeenCalledTimes(1);
-    expect(fixture.nativeElement.querySelector('.mobile-video')).not.toBeNull();
-  });
-
-  it('stops both videos and removes gesture listeners after leaving the page', async () => {
-    const fixture = TestBed.createComponent(HeroMediaComponent);
-    fixture.detectChanges();
-    await Promise.resolve();
-    const playsBeforeDestroy = vi.mocked(HTMLMediaElement.prototype.play).mock.calls.length;
     fixture.destroy();
-    expect(HTMLMediaElement.prototype.pause).toHaveBeenCalledTimes(2);
+    expect(HTMLMediaElement.prototype.pause).toHaveBeenCalledTimes(1);
+    expect(HTMLVideoElement.prototype.cancelVideoFrameCallback).toHaveBeenCalledWith(1);
     document.dispatchEvent(new Event('touchstart'));
-    expect(HTMLMediaElement.prototype.play).toHaveBeenCalledTimes(playsBeforeDestroy);
+    expect(HTMLMediaElement.prototype.play).toHaveBeenCalledTimes(1);
   });
 });
