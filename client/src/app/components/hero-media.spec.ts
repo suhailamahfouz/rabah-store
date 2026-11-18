@@ -33,13 +33,17 @@ describe('One playback source for all three mobile hero rows', () => {
     Reflect.deleteProperty(HTMLVideoElement.prototype, 'cancelVideoFrameCallback');
   });
 
-  it('uses one muted inline player and copies the same frame into top and bottom rows', async () => {
+  it('uses the native video as the first row and copies it into rows two and three', async () => {
     const fixture = TestBed.createComponent(HeroMediaComponent);
     fixture.detectChanges();
     await Promise.resolve();
     const video = fixture.nativeElement.querySelector('video') as HTMLVideoElement;
     expect(fixture.nativeElement.querySelectorAll('video')).toHaveLength(1);
+    expect(fixture.nativeElement.children[0]).toBe(video);
+    expect(fixture.nativeElement.children[1].tagName).toBe('CANVAS');
+    expect(fixture.nativeElement.children[2].tagName).toBe('CANVAS');
     expect(video.muted && video.defaultMuted && video.playsInline).toBe(true);
+    expect(video.hasAttribute('webkit-playsinline')).toBe(true);
     frame(0, {} as VideoFrameCallbackMetadata);
     expect(drawImage).toHaveBeenCalledTimes(2);
     expect(drawImage.mock.calls.every(args => args[0] === video)).toBe(true);
@@ -51,7 +55,7 @@ describe('One playback source for all three mobile hero rows', () => {
     const fixture = TestBed.createComponent(HeroMediaComponent);
     fixture.detectChanges();
     await Promise.resolve();
-    document.dispatchEvent(new Event('touchend'));
+    document.dispatchEvent(new Event('touchstart'));
     await Promise.resolve();
     expect(HTMLMediaElement.prototype.play).toHaveBeenCalledTimes(2);
     expect(paused).toBe(false);
@@ -65,7 +69,16 @@ describe('One playback source for all three mobile hero rows', () => {
     fixture.destroy();
     expect(paused).toBe(true);
     expect(HTMLVideoElement.prototype.cancelVideoFrameCallback).toHaveBeenCalledWith(1);
-    document.dispatchEvent(new Event('touchend'));
+    document.dispatchEvent(new Event('touchstart'));
     expect(HTMLMediaElement.prototype.play).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps the second mirror updating when one canvas temporarily rejects a frame', async () => {
+    drawImage.mockImplementationOnce(() => { throw new DOMException('Frame unavailable', 'InvalidStateError'); });
+    const fixture = TestBed.createComponent(HeroMediaComponent);
+    fixture.detectChanges();
+    await Promise.resolve();
+    frame(0, {} as VideoFrameCallbackMetadata);
+    expect(drawImage).toHaveBeenCalledTimes(2);
   });
 });

@@ -4,10 +4,13 @@ import { AfterViewInit, Component, ElementRef, Input, OnDestroy, ViewChild } fro
   selector: 'app-hero-media',
   standalone: true,
   template: `
-    <canvas #top class="mobile-copy" [style.background-image]="poster ? 'url(' + poster + ')' : null" aria-hidden="true"></canvas>
+    <!-- Keep the real WebKit video layer in the first row. Safari can leave a
+         canvas painted from a later video layer black when the canvas precedes
+         that layer in the compositor. Rows two and three mirror this source. -->
     <video #source autoplay muted loop playsinline preload="auto" [poster]="poster" aria-hidden="true">
       <source src="/videos/rabah-hero.mp4" type="video/mp4" />
     </video>
+    <canvas #middle class="mobile-copy" [style.background-image]="poster ? 'url(' + poster + ')' : null" aria-hidden="true"></canvas>
     <canvas #bottom class="mobile-copy" [style.background-image]="poster ? 'url(' + poster + ')' : null" aria-hidden="true"></canvas>
   `,
   styles: [`
@@ -30,7 +33,7 @@ import { AfterViewInit, Component, ElementRef, Input, OnDestroy, ViewChild } fro
 export class HeroMediaComponent implements AfterViewInit, OnDestroy {
   @Input() poster = '';
   @ViewChild('source', { static: true }) private source!: ElementRef<HTMLVideoElement>;
-  @ViewChild('top', { static: true }) private top!: ElementRef<HTMLCanvasElement>;
+  @ViewChild('middle', { static: true }) private middle!: ElementRef<HTMLCanvasElement>;
   @ViewChild('bottom', { static: true }) private bottom!: ElementRef<HTMLCanvasElement>;
   private frameId?: number;
   private videoFrame = false;
@@ -45,10 +48,19 @@ export class HeroMediaComponent implements AfterViewInit, OnDestroy {
     const video = this.source.nativeElement;
     video.muted = video.defaultMuted = true;
     video.playsInline = true;
+    // Set the content attributes too. WebKit evaluates them when deciding
+    // whether autoplay is allowed, before Angular's property writes settle.
+    video.setAttribute('muted', '');
+    video.setAttribute('playsinline', '');
+    video.setAttribute('webkit-playsinline', '');
     const resume = () => this.resume();
     this.listen(video, 'loadeddata', () => { this.paint(); this.resume(); });
+    this.listen(video, 'loadedmetadata', resume);
     this.listen(video, 'canplay', resume);
-    this.listen(video, 'playing', () => this.scheduleFrame());
+    this.listen(video, 'playing', () => { this.paint(); this.scheduleFrame(); });
+    // Older iOS releases can suspend video-frame callbacks while still
+    // advancing playback. timeupdate keeps both mirrors from freezing.
+    this.listen(video, 'timeupdate', () => this.paint());
     this.listen(video, 'pause', () => this.cancelFrame());
     this.listen(video, 'error', () => this.cancelFrame());
     this.listen(document, 'visibilitychange', () => {
@@ -56,8 +68,11 @@ export class HeroMediaComponent implements AfterViewInit, OnDestroy {
       else this.resume();
     });
     this.listen(window, 'pageshow', resume);
-    this.listen(document, 'touchend', resume);
-    this.listen(document, 'click', resume);
+    this.listen(window, 'focus', resume);
+    // Call play synchronously inside the user-activation event. This recovers
+    // muted autoplay when iOS power/data settings initially decline it.
+    this.listen(document, 'touchstart', resume);
+    this.listen(document, 'pointerdown', resume);
     const resize = () => { this.paint(); this.resume(); };
     this.mobile.addEventListener?.('change', resize);
     this.cleanup.push(() => this.mobile.removeEventListener?.('change', resize));
@@ -96,10 +111,19 @@ export class HeroMediaComponent implements AfterViewInit, OnDestroy {
     // The two copies share one decoder and one timeline. Limit canvas memory.
     const width = Math.min(720, video.videoWidth);
     const height = Math.round(width * video.videoHeight / video.videoWidth);
-    for (const canvas of [this.top.nativeElement, this.bottom.nativeElement]) {
+    for (const canvas of [this.middle.nativeElement, this.bottom.nativeElement]) {
       if (canvas.width !== width) canvas.width = width;
       if (canvas.height !== height) canvas.height = height;
-      canvas.getContext('2d', { alpha: false })?.drawImage(video, 0, 0, width, height);
+      try {
+        const context = canvas.getContext('2d', { alpha: false });
+        if (!context) continue;
+        context.imageSmoothingEnabled = true;
+        context.imageSmoothingQuality = 'high';
+        context.drawImage(video, 0, 0, width, height);
+      } catch {
+        // Keep the poster visible and try the next decoded frame. A temporary
+        // WebKit InvalidStateError must not stop the other mirrored row.
+      }
     }
   }
 
@@ -112,7 +136,8 @@ export class HeroMediaComponent implements AfterViewInit, OnDestroy {
       this.paint();
       this.scheduleFrame();
     };
-    this.videoFrame = typeof video.requestVideoFrameCallback === 'function';
+    this.videoFrame = typeof video.requestVideoFrameCallback === 'function'
+      && typeof video.cancelVideoFrameCallback === 'function';
     this.frameId = this.videoFrame ? video.requestVideoFrameCallback(render) : requestAnimationFrame(render);
   }
 

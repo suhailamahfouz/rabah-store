@@ -165,6 +165,7 @@ describe('CheckoutPageComponent', () => {
   });
 
   it('sends the selected color with the order item', () => {
+    store.applyLanguage('ar');
     TestBed.inject(ProductService).products.update(products => products.map(product => ({ ...product, colorOptions: [{ hex: '#111111', name: { ar: 'أسود', en: 'Black' } }] })));
     store.clearCart();
     store.addToCart('product-id', 1, '#111111');
