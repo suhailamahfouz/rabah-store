@@ -1,14 +1,17 @@
-import { ApplicationConfig, provideBrowserGlobalErrorListeners } from '@angular/core';
+import { ApplicationConfig, inject, provideAppInitializer, provideBrowserGlobalErrorListeners } from '@angular/core';
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { provideRouter } from '@angular/router';
 import { routes } from './app.routes';
 import { storefrontLoadingInterceptor } from './interceptors/storefront-loading.interceptor';
 import { adminSessionInterceptor } from './interceptors/admin-session.interceptor';
+import { BackendReadinessService } from './services/backend-readiness.service';
 
 export const appConfig: ApplicationConfig = {
   providers: [
     provideBrowserGlobalErrorListeners(),
     provideHttpClient(withInterceptors([adminSessionInterceptor, storefrontLoadingInterceptor])),
-    provideRouter(routes)
+    provideRouter(routes),
+    // Do not render the store until a waking backend has confirmed it is ready.
+    provideAppInitializer(() => inject(BackendReadinessService).waitUntilReady()),
   ]
 };

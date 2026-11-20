@@ -1,6 +1,5 @@
-import { StorefrontIntroComponent } from './components/storefront-intro';
 import { CommonModule } from '@angular/common';
-import { Component, DestroyRef, effect, inject, signal } from '@angular/core';
+import { Component, effect, inject, signal } from '@angular/core';
 import { NavigationEnd, Router, RouterOutlet } from '@angular/router';
 import { filter } from 'rxjs';
 import { HeaderComponent } from './layout/header';
@@ -10,7 +9,7 @@ import { SeoService } from './services/seo.service';
 import { StoreService } from './services/store.service';
 
 @Component({
-  imports: [StorefrontIntroComponent, CommonModule, RouterOutlet, HeaderComponent, FooterComponent, CartNotificationComponent],
+  imports: [CommonModule, RouterOutlet, HeaderComponent, FooterComponent, CartNotificationComponent],
   selector: 'app-root',
   styleUrl: './app.scss',
   templateUrl: './app.html',
@@ -21,12 +20,7 @@ export class App {
   private readonly seo = inject(SeoService);
   private readonly currentUrl = signal(this.router.url || '/');
 
-  readonly introVisible = signal(!location.pathname.startsWith('/admin'));
-
   constructor() {
-    const duration = window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 1250;
-    const introTimer = setTimeout(() => this.introVisible.set(false), duration);
-    inject(DestroyRef).onDestroy(() => clearTimeout(introTimer));
     this.router.events.pipe(filter((event): event is NavigationEnd => event instanceof NavigationEnd)).subscribe((event) => {
       const language = this.languageFromUrl(event.urlAfterRedirects);
       if (language && language !== this.store.lang()) this.store.applyLanguage(language);
