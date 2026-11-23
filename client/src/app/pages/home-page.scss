@@ -190,7 +190,16 @@
   padding: 0 0 7rem;
 }
 
-.site-promo,.featured-collection-visual{width:min(1320px,calc(100% - 4rem));margin:2rem auto}.site-promo img,.featured-collection-visual img{display:block;width:100%}
+.site-promo,
+.featured-collection-visual {
+  width: min(1320px, calc(100% - 4rem));
+  margin: 2rem auto;
+}
+.site-promo img,
+.featured-collection-visual img {
+  display: block;
+  width: 100%;
+}
 
 .section-heading {
   display: flex;
@@ -217,28 +226,23 @@
 }
 
 .categories-heading {
-  justify-content: center;
-  margin-bottom: 3rem;
-  text-align: center;
+  justify-content: start;
+  margin-bottom: 2rem;
+  text-align: start;
 }
 
 .categories-heading .eyebrow {
-  margin-bottom: 0.75rem;
-  color: #b98f68;
-  font-size: 0.68rem;
-  letter-spacing: 0.2em;
-  text-transform: uppercase;
+  display: none;
 }
 
 .categories-heading h2 {
   color: #171412;
-  font-size: clamp(2.2rem, 3.2vw, 2.8rem);
+  font-size: clamp(2.5rem, 4.2vw, 4.3rem);
+  letter-spacing: -0.045em;
 }
 
 .categories-subtitle {
-  margin: 0.8rem 0 0;
-  color: #746d68;
-  font-size: 0.94rem;
+  display: none;
 }
 
 .heading-actions {
@@ -355,7 +359,12 @@
   letter-spacing: 0.06em;
 }
 
-.product-badge.stock-badge { background: var(--burgundy); color: #fffdf9; font-size: .75rem; border-radius: .35rem; }
+.product-badge.stock-badge {
+  background: var(--burgundy);
+  color: #fffdf9;
+  font-size: 0.75rem;
+  border-radius: 0.35rem;
+}
 
 .product-info {
   padding: 1rem 0.1rem 0;
@@ -408,8 +417,8 @@
 
 .category-grid {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 1.15rem;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1.5rem;
 }
 
 @media (min-width: 1500px) {
@@ -433,7 +442,7 @@
   }
 
   .category-grid {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
@@ -563,16 +572,8 @@
   }
 
   .category-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 0.65rem;
-  }
-
-  .category-card {
-    min-height: 120px;
-  }
-
-  .category-card + .category-card {
-    border-inline-start: 0;
+    grid-template-columns: 1fr;
+    gap: 1rem;
   }
 }
 
@@ -584,4 +585,6 @@
   }
 }
 
-app-hero-media { z-index: 0; }
+app-hero-media {
+  z-index: 0;
+}
