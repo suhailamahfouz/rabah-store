@@ -2,7 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { vi } from 'vitest';
 import { HeroMediaComponent } from './hero-media';
 
-describe('One decoder with three mobile canvas panels', () => {
+describe('One decoder with one three-panel mobile canvas', () => {
   let paused: boolean;
   let frame: VideoFrameRequestCallback;
   const drawImage = vi.fn();
@@ -19,12 +19,13 @@ describe('One decoder with three mobile canvas panels', () => {
     vi.spyOn(HTMLVideoElement.prototype, 'videoHeight', 'get').mockReturnValue(1080);
     vi.spyOn(HTMLMediaElement.prototype, 'play').mockImplementation(async () => { paused = false; });
     vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(() => { paused = true; });
-    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue({ drawImage } as unknown as CanvasRenderingContext2D);
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue({ drawImage, fillRect() {} } as unknown as CanvasRenderingContext2D);
     Object.defineProperty(HTMLVideoElement.prototype, 'requestVideoFrameCallback', {
       configurable: true,
       value: vi.fn(callback => { frame = callback; return 1; }),
     });
     Object.defineProperty(HTMLVideoElement.prototype, 'cancelVideoFrameCallback', { configurable: true, value: vi.fn() });
+    vi.spyOn(Element.prototype, 'getBoundingClientRect').mockReturnValue({ width: 390, height: 709 } as DOMRect);
     TestBed.configureTestingModule({ imports: [HeroMediaComponent] });
   });
 
@@ -42,14 +43,14 @@ describe('One decoder with three mobile canvas panels', () => {
     await Promise.resolve();
     const video = fixture.nativeElement.querySelector('video') as HTMLVideoElement;
     expect(fixture.nativeElement.querySelectorAll('video')).toHaveLength(1);
-    expect(fixture.nativeElement.querySelectorAll('canvas')).toHaveLength(3);
+    expect(fixture.nativeElement.querySelectorAll('canvas')).toHaveLength(1);
     expect(fixture.nativeElement.children[0]).toBe(video);
     expect([...fixture.nativeElement.children].slice(1).every((item: Element) => item.tagName === 'CANVAS')).toBe(true);
     expect(video.muted && video.defaultMuted && video.playsInline).toBe(true);
     expect(video.hasAttribute('webkit-playsinline')).toBe(true);
   });
 
-  it('paints the same decoded frame into all three panels', async () => {
+  it('paints the same decoded frame into all three panels of the single canvas', async () => {
     const fixture = TestBed.createComponent(HeroMediaComponent);
     fixture.detectChanges();
     await Promise.resolve();
@@ -58,15 +59,22 @@ describe('One decoder with three mobile canvas panels', () => {
     frame(0, {} as VideoFrameCallbackMetadata);
     expect(drawImage).toHaveBeenCalledTimes(3);
     expect(drawImage.mock.calls.every(args => args[0] === video)).toBe(true);
-    expect(drawImage.mock.calls[0].slice(1)).toEqual([0, 0, 480, 270]);
+    const destinations = drawImage.mock.calls.map(args => args[6]);
+    expect(destinations[0]).toBe(0);
+    expect(destinations[1]).toBeGreaterThan(destinations[0]);
+    expect(destinations[2]).toBeGreaterThan(destinations[1]);
   });
 
-  it('continues painting the other panels if one draw temporarily fails', async () => {
+  it('logs a failed draw and paints again on the next frame', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const fixture = TestBed.createComponent(HeroMediaComponent);
     fixture.detectChanges();
     await Promise.resolve();
     drawImage.mockReset();
     drawImage.mockImplementationOnce(() => { throw new DOMException('Frame unavailable', 'InvalidStateError'); });
+    frame(0, {} as VideoFrameCallbackMetadata);
+    expect(warn).toHaveBeenCalled();
+    drawImage.mockReset();
     frame(0, {} as VideoFrameCallbackMetadata);
     expect(drawImage).toHaveBeenCalledTimes(3);
   });

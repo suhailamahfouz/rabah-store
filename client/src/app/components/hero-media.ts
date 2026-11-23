@@ -9,16 +9,13 @@ import { AfterViewInit, Component, ElementRef, Input, OnDestroy, ViewChild } fro
     <video #source class="source-video" autoplay muted loop playsinline preload="auto" [poster]="poster" aria-hidden="true">
       <source src="/videos/rabah-hero.mp4" type="video/mp4" />
     </video>
-    <canvas #top class="mobile-panel" [style.background-image]="poster ? 'url(' + poster + ')' : null" aria-hidden="true"></canvas>
-    <canvas #middle class="mobile-panel" [style.background-image]="poster ? 'url(' + poster + ')' : null" aria-hidden="true"></canvas>
-    <canvas #bottom class="mobile-panel" [style.background-image]="poster ? 'url(' + poster + ')' : null" aria-hidden="true"></canvas>
+    <canvas #panels class="mobile-panels" [style.background-image]="poster ? 'url(' + poster + ')' : null" aria-hidden="true"></canvas>
   `,
   styles: [`
     :host { position: absolute; inset: 0; display: block; pointer-events: none; background: #332325; }
     .source-video { display: block; width: 100%; height: 100%; object-fit: cover; object-position: 70% center; }
-    .mobile-panel { display: none; }
+    .mobile-panels { display: none; }
     @media (max-width: 640px) {
-      :host { display: grid; grid-template-rows: repeat(3, minmax(0, 1fr)); gap: 2px; }
       .source-video {
         position: absolute;
         inset: 0 auto auto 0;
@@ -28,25 +25,15 @@ import { AfterViewInit, Component, ElementRef, Input, OnDestroy, ViewChild } fro
         min-height: 1px;
         opacity: 0.001;
       }
-      .mobile-panel {
+      .mobile-panels {
         display: block;
+        position: absolute;
+        inset: 0;
         width: 100%;
         height: 100%;
-        min-width: 0;
-        min-height: 0;
-        max-width: 100%;
-        max-height: 100%;
-        object-fit: cover;
-        object-position: center;
         background-size: cover;
         background-repeat: no-repeat;
         background-position: center;
-      }
-    }
-    @supports (-webkit-touch-callout: none) {
-      @media (max-width: 640px) {
-        :host { gap: 0; }
-        .mobile-panel { object-fit: contain; background-size: contain; }
       }
     }
   `],
@@ -54,9 +41,7 @@ import { AfterViewInit, Component, ElementRef, Input, OnDestroy, ViewChild } fro
 export class HeroMediaComponent implements AfterViewInit, OnDestroy {
   @Input() poster = '';
   @ViewChild('source', { static: true }) private source!: ElementRef<HTMLVideoElement>;
-  @ViewChild('top', { static: true }) private top!: ElementRef<HTMLCanvasElement>;
-  @ViewChild('middle', { static: true }) private middle!: ElementRef<HTMLCanvasElement>;
-  @ViewChild('bottom', { static: true }) private bottom!: ElementRef<HTMLCanvasElement>;
+  @ViewChild('panels', { static: true }) private panels!: ElementRef<HTMLCanvasElement>;
   private frameId?: number;
   private videoFrame = false;
   private destroyed = false;
@@ -126,21 +111,33 @@ export class HeroMediaComponent implements AfterViewInit, OnDestroy {
   private paint(): void {
     const video = this.source.nativeElement;
     if (!this.mobile.matches || video.readyState < 2 || !video.videoWidth || !video.videoHeight) return;
-    // 480px is enough for a mobile panel and keeps three canvas copies light.
-    const width = Math.min(480, video.videoWidth);
-    const height = Math.round(width * video.videoHeight / video.videoWidth);
-    for (const canvas of [this.top.nativeElement, this.middle.nativeElement, this.bottom.nativeElement]) {
-      if (canvas.width !== width) canvas.width = width;
-      if (canvas.height !== height) canvas.height = height;
-      try {
-        const context = canvas.getContext('2d');
-        if (!context) continue;
-        context.imageSmoothingEnabled = true;
-        context.imageSmoothingQuality = 'high';
-        context.drawImage(video, 0, 0, width, height);
-      } catch {
-        // Keep the poster visible and retry on the next decoded frame.
+    const canvas = this.panels.nativeElement;
+    const box = canvas.getBoundingClientRect();
+    if (!box.width || !box.height) return;
+    // One surface for all three panels, so they can never diverge.
+    const scale = Math.min(2, window.devicePixelRatio || 1);
+    const width = Math.round(box.width * scale);
+    const height = Math.round(box.height * scale);
+    if (canvas.width !== width) canvas.width = width;
+    if (canvas.height !== height) canvas.height = height;
+    try {
+      const context = canvas.getContext('2d');
+      if (!context) return;
+      context.fillStyle = '#332325';
+      context.fillRect(0, 0, width, height);
+      const gap = 2 * scale;
+      const panelH = (height - gap * 2) / 3;
+      // object-fit: cover crop of the source into each panel
+      const ratio = Math.max(width / video.videoWidth, panelH / video.videoHeight);
+      const sw = width / ratio;
+      const sh = panelH / ratio;
+      const sx = (video.videoWidth - sw) / 2;
+      const sy = (video.videoHeight - sh) / 2;
+      for (let i = 0; i < 3; i++) {
+        context.drawImage(video, sx, sy, sw, sh, 0, i * (panelH + gap), width, panelH);
       }
+    } catch (error) {
+      console.warn('hero paint failed', error);
     }
   }
 
