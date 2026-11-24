@@ -147,3 +147,34 @@ test('cancelling an old color order restores general stock after conversion', as
     Product.updateOne = original.update;
   }
 });
+
+test('failed order-number generation rolls reserved stock back', async () => {
+  const original = {
+    orderFind: Order.findOne, orderCreate: Order.create, productFind: Product.findOne,
+    productFindUpdate: Product.findOneAndUpdate, productUpdate: Product.updateOne,
+    counter: Counter.findOneAndUpdate, settingsFind: Settings.findOne,
+  };
+  let stock = 4;
+  let creates = 0;
+  (Settings as any).findOne = async () => settings;
+  (Counter as any).findOneAndUpdate = async () => { throw new Error('counter unavailable'); };
+  (Order as any).findOne = () => ({ select: async () => null });
+  (Order as any).create = async () => { creates += 1; return {}; };
+  (Product as any).findOne = async () => product(stock);
+  (Product as any).findOneAndUpdate = async (_filter: unknown, update: any) => { stock += update.$inc.stock; return product(stock); };
+  (Product as any).updateOne = async (_filter: unknown, update: any) => { stock += update.$inc.stock; return { matchedCount: 1 }; };
+
+  try {
+    await assert.rejects(() => createOrder({ ...input, idempotencyKey: 'checkout-key-counter' }), /counter unavailable/);
+    assert.equal(creates, 0);
+    assert.equal(stock, 4);
+  } finally {
+    (Order as any).findOne = original.orderFind;
+    (Order as any).create = original.orderCreate;
+    (Product as any).findOne = original.productFind;
+    (Product as any).findOneAndUpdate = original.productFindUpdate;
+    (Product as any).updateOne = original.productUpdate;
+    (Counter as any).findOneAndUpdate = original.counter;
+    (Settings as any).findOne = original.settingsFind;
+  }
+});

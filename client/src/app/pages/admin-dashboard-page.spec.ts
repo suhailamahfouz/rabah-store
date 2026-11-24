@@ -90,19 +90,22 @@ describe('AdminDashboardPageComponent', () => {
     expect(JSON.parse(localStorage.getItem(storageKey)!).products).toHaveLength(5);
   });
 
-  it('rejects malformed color inventory rows without changing the product list', () => {
+  it('saves only the colors picked from the palette and ignores the legacy free-text variants field', () => {
     const { component } = createComponent();
     component.newProduct();
+    const color = { hex: '#641B2E', name: { ar: 'نبيتي', en: 'Burgundy' } };
     Object.assign(component.productDraft!, {
-      sku: 'BAG-INVALID', slug: 'invalid-bag', nameAr: 'حقيبة', nameEn: 'Bag', category: 'demo-bags', price: 100, stock: 2,
-      variants: 'أحمر | Red | not-a-hex | two', images: [],
+      sku: 'BAG-PALETTE', slug: 'palette-bag', nameAr: 'حقيبة', nameEn: 'Bag', category: 'demo-bags', price: 100, stock: 2,
+      colorOptions: [color], variants: 'أحمر | Red | not-a-hex | two', images: [],
     });
 
     component.saveProduct();
 
-    expect(component.products()).toHaveLength(4);
-    expect(component.productDraft).not.toBeNull();
-    expect(component.errorMessage()).not.toBe('');
+    const saved = component.products().find((product) => product.sku === 'BAG-PALETTE');
+    expect(component.products()).toHaveLength(5);
+    expect(saved?.colorOptions).toEqual([color]);
+    expect(saved?.variants).toEqual([]);
+    expect(component.successMessage()).toContain('على الجهاز فقط');
   });
 
   it('updates order and payment statuses using the requested Egyptian labels', () => {

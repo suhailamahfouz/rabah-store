@@ -949,7 +949,6 @@ export class ProductDetailPageComponent {
       this.selectedColor.set('');
       this.slug.set(params['slug'] ?? '');
       this.productsApi.loadBySlug(this.slug());
-      this.productsApi.loadCatalog?.();
       this.quantity.set(1);
     });
   }

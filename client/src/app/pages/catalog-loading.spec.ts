@@ -11,7 +11,7 @@ import { vi } from 'vitest';
 describe('Direct storefront navigation loads products', () => {
   const product = { id: '507f1f77bcf86cd799439011', slug: 'sample-bag', name: { ar: 'شنطة اختبار', en: 'Test Bag' },
     description: { ar: '', en: '' }, shortDescription: { ar: '', en: '' }, price: 100, originalPrice: 100,
-    stock: 8, rating: 0, reviewCount: 0, category: 'bags-id', createdAt: '2026-01-01', colors: [], variants: [], images: [], features: [] };
+    stock: 8, rating: 0, reviewCount: 0, category: 'bags-id', createdAt: '2026-01-01', colors: [], variants: [], images: [], features: [], isBestSeller: true };
   beforeEach(() => {
     vi.stubGlobal('matchMedia', () => ({ matches: false }));
     vi.spyOn(HTMLMediaElement.prototype, 'play').mockResolvedValue();

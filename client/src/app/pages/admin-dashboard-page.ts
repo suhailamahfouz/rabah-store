@@ -961,24 +961,26 @@ export class AdminDashboardPageComponent {
   private readonly customerLimit = 25;
 
   constructor() {
-    // Keep the dashboard usable before protected API calls resolve and when
-    // they fail. Successful responses below replace this local demo state.
-    this.loadDemoData();
+    // Sample data is only for the offline demo (no AdminService). When the real
+    // API is available the dashboard starts empty and never shows or saves
+    // sample records, so an API failure cannot look like real store data.
+    if (!this.adminApi) this.loadDemoData();
     this.loadDashboard();
     this.adminApi?.settings().subscribe({
       next: ({ data }) => {
         this.settings.set(this.withShippingDefaults(data));
         this.settingsDraft = this.cloneSettings(this.settings());
       },
-      // The demo dashboard must remain usable if the authenticated API is
-      // unavailable, including while the application is first starting.
-      error: () => undefined,
+      error: () => this.errorMessage.set('تعذر تحميل إعدادات المتجر من الخادم.'),
     });
     this.adminApi?.products().subscribe({
       next: ({ data, pagination }) => { this.products.set(data); this.productPage = pagination.page; this.productPages = pagination.pages; this.productTotal = pagination.total; },
-      error: () => undefined,
+      error: () => this.errorMessage.set('تعذر تحميل المنتجات من الخادم.'),
     });
-    this.adminApi?.categories().subscribe({ next: ({ data }) => this.categories.set(data), error: () => undefined });
+    this.adminApi?.categories().subscribe({
+      next: ({ data }) => this.categories.set(data),
+      error: () => this.errorMessage.set('تعذر تحميل الأقسام من الخادم.'),
+    });
     this.loadOrders();
     this.loadCustomers();
   }
@@ -1394,7 +1396,7 @@ export class AdminDashboardPageComponent {
       isBestSeller: draft.isBestSeller,
     };
     const payload: AdminProductPayload = { sku: product.sku, slug: product.slug, name: product.name, description: product.description, shortDescription: product.shortDescription, category: draft.category, price: product.price, salePrice: product.salePrice ?? null, stock: product.stock, colorOptions: product.colorOptions, variants: product.variants, images: product.images, isActive: product.isActive, isFeatured: product.isFeatured, isBestSeller: product.isBestSeller };
-    if (!this.adminApi) { this.products.set(draft.id ? this.products().map((item) => item._id === draft.id ? product : item) : [product, ...this.products()]); this.productDraft = null; this.persistDemo('تم حفظ المنتج.'); return; }
+    if (!this.adminApi) { this.products.set(draft.id ? this.products().map((item) => item._id === draft.id ? product : item) : [product, ...this.products()]); this.productDraft = null; this.persistDemo('تم حفظ المنتج'); return; }
     this.isSaving.set(true);
     this.adminApi.saveProduct(payload, draft.id).subscribe({
       next: ({ data }) => { this.products.set(draft.id ? this.products().map((item) => item._id === draft.id ? data : item) : [data, ...this.products()]); this.releaseDraftImagePreviews(draft); this.productDraft = null; this.successMessage.set(draft.id ? 'تم تعديل المنتج بنجاح.' : 'تمت إضافة المنتج بنجاح.'); this.isSaving.set(false); this.loadProducts(); this.storefront.reloadCatalog(); },
@@ -1439,7 +1441,7 @@ export class AdminDashboardPageComponent {
       isActive: draft.isActive,
     };
     const isDemoRecord = draft.id?.startsWith('demo-') === true;
-    if (!this.adminApi || isDemoRecord) { this.revokeCategoryImagePreview(draft); this.categories.set(draft.id ? this.categories().map((item) => item._id === draft.id ? category : item) : [...this.categories(), category]); this.categoryDraft = null; this.persistDemo('تم حفظ التصنيف.'); return; }
+    if (!this.adminApi || isDemoRecord) { this.revokeCategoryImagePreview(draft); this.categories.set(draft.id ? this.categories().map((item) => item._id === draft.id ? category : item) : [...this.categories(), category]); this.categoryDraft = null; this.persistDemo('تم حفظ التصنيف'); return; }
     this.isSaving.set(true);
     const payload = { slug: category.slug, name: category.name, description: category.description, image: category.image, imagePublicId: category.imagePublicId || undefined, sortOrder: category.sortOrder, isActive: category.isActive };
     this.adminApi.saveCategory(payload, draft.id).subscribe({
@@ -1726,7 +1728,8 @@ export class AdminDashboardPageComponent {
         orders: this.orders(),
         settings: this.settings(),
       }));
-      this.successMessage.set(successMessage);
+      // Local demo saves never reach the server; say so on every success message.
+      this.successMessage.set(`${successMessage} (محفوظ على الجهاز فقط في وضع الديمو، مش على الخادم)`);
     } catch {
       this.errorMessage.set('حصلت مشكلة وإحنا بنحفظ الديمو على الجهاز. جربي تاني.');
     } finally {

@@ -2,13 +2,16 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { Order } from './Order.js';
 
-test('Order.customerId is an optional indexed Customer reference', () => {
+test('Order.customerId is an optional Customer reference covered by indexes that lead with it', () => {
   const path = Order.schema.path('customerId') as { options: { ref?: string; required?: boolean; index?: boolean } };
 
   assert.equal(path.options.ref, 'Customer');
   assert.notEqual(path.options.required, true);
-  assert.equal(path.options.index, true);
-  assert.ok(Order.schema.indexes().some(([fields]) => fields.customerId === 1));
+  // customerId is indexed through compound indexes whose first key is customerId.
+  const leading = Order.schema.indexes().filter(([fields]) => Object.keys(fields)[0] === 'customerId');
+  assert.ok(leading.length >= 1);
+  assert.ok(leading.some(([fields]) => 'createdAt' in fields));
+  assert.ok(leading.some(([fields, options]) => 'idempotencyKey' in fields && options?.unique === true));
 });
 
 test('legacy orders remain valid without customerId', () => {

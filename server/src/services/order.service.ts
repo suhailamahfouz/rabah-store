@@ -198,45 +198,46 @@ export async function createOrder(
   // This prevents an unavailable destination from consuming stock.
   calculateShipping(settings, 0, input.customer.governorate, input.customer.city);
   const { resolved: products, reservations } = await decrementStock(input.items);
-
-  let subtotal = 0;
-  const orderItems = input.items.map((item, index) => {
-    const { product, variant } = products[index];
-    const unitPrice = Number(product.salePrice ?? product.price ?? 0);
-    subtotal += unitPrice * item.quantity;
-
-    return {
-      product: product._id,
-      sku: product.sku,
-      name: product.name,
-      image: product.images?.[0]?.url ?? "",
-      note: item.note ?? '',
-      variantId: variant?._id,
-      color: item.color
-        ? product.colorOptions?.find((color: { hex: string; name: { ar: string; en: string } }) => color.hex?.toUpperCase() === item.color)?.name
-        : variant
-        ? {
-            ar: String(variant.color?.name?.ar ?? ''),
-            en: String(variant.color?.name?.en ?? ''),
-          }
-        : undefined,
-      unitPrice,
-      quantity: item.quantity,
-      lineTotal: unitPrice * item.quantity,
-    };
-  });
-
-  // Never trust the client-provided shipping amount. Recalculate it from the
-  // persisted settings and the normalized customer address on every order.
-  const shippingQuote = calculateShipping(settings, subtotal, input.customer.governorate, input.customer.city);
-  const shippingFee = shippingQuote.fee;
-  const total = subtotal + shippingFee;
-  const orderNumber = await buildOrderNumber();
-  const accessToken = deriveOrderAccessToken(input.idempotencyKey);
-  const placedAt = new Date();
-
+  let accessToken = '';
   let order;
   try {
+
+    let subtotal = 0;
+    const orderItems = input.items.map((item, index) => {
+      const { product, variant } = products[index];
+      const unitPrice = Number(product.salePrice ?? product.price ?? 0);
+      subtotal += unitPrice * item.quantity;
+
+      return {
+        product: product._id,
+        sku: product.sku,
+        name: product.name,
+        image: product.images?.[0]?.url ?? "",
+        note: item.note ?? '',
+        variantId: variant?._id,
+        color: item.color
+          ? product.colorOptions?.find((color: { hex: string; name: { ar: string; en: string } }) => color.hex?.toUpperCase() === item.color)?.name
+          : variant
+          ? {
+              ar: String(variant.color?.name?.ar ?? ''),
+              en: String(variant.color?.name?.en ?? ''),
+            }
+          : undefined,
+        unitPrice,
+        quantity: item.quantity,
+        lineTotal: unitPrice * item.quantity,
+      };
+    });
+
+    // Never trust the client-provided shipping amount. Recalculate it from the
+    // persisted settings and the normalized customer address on every order.
+    const shippingQuote = calculateShipping(settings, subtotal, input.customer.governorate, input.customer.city);
+    const shippingFee = shippingQuote.fee;
+    const total = subtotal + shippingFee;
+    const orderNumber = await buildOrderNumber();
+    accessToken = deriveOrderAccessToken(input.idempotencyKey);
+    const placedAt = new Date();
+
     order = await Order.create({
       orderNumber,
       idempotencyKey: input.idempotencyKey,
