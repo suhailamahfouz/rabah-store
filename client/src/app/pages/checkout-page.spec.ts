@@ -16,6 +16,7 @@ describe('CheckoutPageComponent', () => {
 
   beforeEach(async () => {
     localStorage.removeItem('rabah-cart');
+    sessionStorage.removeItem('rabah-pending-proof-v1');
     await TestBed.configureTestingModule({
       providers: [provideRouter(routes), provideHttpClient(), provideHttpClientTesting()],
     }).compileComponents();
@@ -208,6 +209,9 @@ describe('CheckoutPageComponent', () => {
       },
     });
 
+    expect(JSON.parse(sessionStorage.getItem('rabah-pending-proof-v1') ?? '{}').orderNumber).toBe('RBAH-2026-00043');
+    expect(localStorage.getItem('rabah-pending-proof-v1')).toBeNull();
+
     const originalCreateObjectUrl = URL.createObjectURL;
     (URL as any).createObjectURL = () => 'blob:proof-preview';
     try {
@@ -223,5 +227,52 @@ describe('CheckoutPageComponent', () => {
 
     expect(component.orderSubmitted()).toBe(true);
     expect(component.proofAccessToken()).toBe('');
+    expect(sessionStorage.getItem('rabah-pending-proof-v1')).toBeNull();
+  });
+
+  function savePending(over: Record<string, unknown> = {}) {
+    sessionStorage.setItem('rabah-pending-proof-v1', JSON.stringify({
+      orderNumber: 'RBAH-2026-00050', id: 'x', total: 500, currency: 'EGP', paymentMethod: 'instapay',
+      createdAt: '2026-11-24T00:00:00.000Z', accessToken: 'b'.repeat(64), savedAt: Date.now(), ...over,
+    }));
+  }
+
+  it('resumes a pending InstaPay proof upload after a page refresh without creating a new order', () => {
+    savePending();
+    const fixture = TestBed.createComponent(CheckoutPageComponent);
+    fixture.detectChanges();
+    const restored = fixture.componentInstance;
+    expect(restored.order()?.orderNumber).toBe('RBAH-2026-00050');
+    expect(restored.proofRestored()).toBe(true);
+    expect(restored.proofAccessToken()).toBe('b'.repeat(64));
+    expect((fixture.nativeElement as HTMLElement).querySelector('.proof-upload')).not.toBeNull();
+    restored.submit();
+    http.expectNone('/api/orders');
+  });
+
+  it('discards an expired or malformed pending proof', () => {
+    savePending({ savedAt: Date.now() - 25 * 60 * 60 * 1000 });
+    expect(TestBed.createComponent(CheckoutPageComponent).componentInstance.order()).toBeNull();
+    expect(sessionStorage.getItem('rabah-pending-proof-v1')).toBeNull();
+    savePending({ accessToken: 'short' });
+    expect(TestBed.createComponent(CheckoutPageComponent).componentInstance.order()).toBeNull();
+    expect(sessionStorage.getItem('rabah-pending-proof-v1')).toBeNull();
+  });
+
+  it('stops offering the upload when the server says the order is already paid', () => {
+    savePending();
+    const restored = TestBed.createComponent(CheckoutPageComponent).componentInstance;
+    const originalCreateObjectUrl = URL.createObjectURL;
+    (URL as any).createObjectURL = () => 'blob:p';
+    try {
+      restored.onProofFileSelected({ target: { files: [new File(['p'], 'p.png', { type: 'image/png' })] } } as unknown as Event);
+      http.expectOne('/api/orders/RBAH-2026-00050/proof').flush(
+        { success: false, error: { code: 'CONFLICT', message: 'This order is already paid' } }, { status: 409, statusText: 'Conflict' });
+    } finally {
+      (URL as any).createObjectURL = originalCreateObjectUrl;
+    }
+    expect(restored.proofError()).toBe('This order is already paid');
+    expect(restored.proofAccessToken()).toBe('');
+    expect(sessionStorage.getItem('rabah-pending-proof-v1')).toBeNull();
   });
 });

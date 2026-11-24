@@ -141,6 +141,8 @@ export interface AdminOrder {
   paymentStatus: string;
   orderStatus: string;
   createdAt: string;
+  /** Present once a customer uploaded an InstaPay transfer screenshot. */
+  paymentProof?: { transferReference?: string; uploadedAt?: string; available: boolean };
 }
 
 /** Safe fields returned by the protected admin customer directory. */
@@ -313,6 +315,11 @@ export class AdminService {
     const params: Record<string, string> = {};
     for (const [key, value] of Object.entries(query)) if (value) params[key] = value;
     return this.http.get<{ success: true; data: AdminOrder[] }>('/api/admin/orders', { params, withCredentials: true });
+  }
+
+  /** Admin-only URL of the stored InstaPay screenshot (opens with the admin session cookie). */
+  paymentProofUrl(orderId: string): string {
+    return `/api/admin/orders/${encodeURIComponent(orderId)}/proof`;
   }
 
   updateOrder(id: string, update: { orderStatus?: string; paymentStatus?: string }): Observable<{ success: true; data: AdminOrder }> {

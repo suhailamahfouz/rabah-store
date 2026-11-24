@@ -188,6 +188,9 @@ export const adminSettingsSchema = z.object({
       ar: z.string().trim().max(1000),
       en: z.string().trim().max(1000),
     }),
+  }).refine((v) => !v.enabled || v.identifier.length > 0, {
+    path: ['identifier'],
+    message: 'InstaPay identifier is required when InstaPay is enabled',
   }),
   shipping: z.object({
     enabled: z.boolean(),

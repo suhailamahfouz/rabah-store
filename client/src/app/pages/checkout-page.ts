@@ -17,7 +17,7 @@ import { StoreService } from '../services/store.service';
       <div class="checkout-form" *ngIf="!orderSubmitted(); else successState">
         <h1>{{ lang() === 'ar' ? 'إتمام الطلب' : 'Checkout — إتمام الطلب' }}</h1>
 
-        <form [formGroup]="form" (ngSubmit)="submit()">
+        <form [formGroup]="form" (ngSubmit)="submit()" [class.resume-mode]="proofRestored()">
           <div class="grid two-columns">
             <label>
               <span>{{ lang() === 'ar' ? 'الاسم الكامل' : 'Full name — الاسم الكامل' }}</span>
@@ -82,6 +82,11 @@ import { StoreService } from '../services/store.service';
           <p class="feedback error" *ngIf="errorMessage()" role="alert">{{ errorMessage() }}</p>
 
           <div class="proof-upload" *ngIf="selectedPaymentMethod() === 'instapay' && order()?.orderNumber">
+            <p class="proof-label" *ngIf="proofRestored()">
+              {{ lang() === 'ar'
+                ? 'طلبك رقم ' + order()?.orderNumber + ' اتسجل. ارفعي صورة التحويل هنا عشان نراجعه، مش محتاجة تعملي طلب جديد.'
+                : 'Your order ' + order()?.orderNumber + ' is already placed. Upload your transfer screenshot here, no need to order again.' }}
+            </p>
             <p class="proof-label">
               {{
                 lang() === 'ar'
@@ -119,7 +124,7 @@ import { StoreService } from '../services/store.service';
         </form>
       </div>
 
-      <aside class="summary-card" *ngIf="!orderSubmitted()">
+      <aside class="summary-card" *ngIf="!orderSubmitted() && !proofRestored()">
         <h2>{{ lang() === 'ar' ? 'ملخص الطلب' : 'Order summary — ملخص الطلب' }}</h2>
         <div class="summary-list">
           <div class="summary-row" *ngFor="let item of cartItems()">
@@ -291,6 +296,11 @@ import { StoreService } from '../services/store.service';
       .submit-btn:disabled {
         opacity: 0.6;
         cursor: not-allowed;
+      }
+
+      /* After a refresh only the placed-order note and the upload box are useful. */
+      .resume-mode > :not(.proof-upload):not(.instapay-instructions) {
+        display: none;
       }
 
       .proof-upload {
@@ -469,9 +479,13 @@ export class CheckoutPageComponent {
   readonly proofPreviewUrl = signal<string | null>(null);
   readonly proofFileName = signal('');
   readonly proofError = signal('');
-  // Kept only in component memory. It authorizes the payment-proof upload and
-  // is never written to localStorage, the URL, or broader application state.
+  // Authorizes the payment-proof upload. It is kept in component memory and,
+  // only for InstaPay orders still waiting for a proof, in this tab's
+  // sessionStorage so a refresh does not lose the upload step. It is never put
+  // in the URL or localStorage, is removed once the proof is uploaded or the
+  // server refuses it, and is ignored after 24 hours.
   readonly proofAccessToken = signal('');
+  readonly proofRestored = signal(false);
   private idempotencyKey = crypto.randomUUID();
 
   readonly form = this.fb.nonNullable.group({
@@ -483,6 +497,7 @@ export class CheckoutPageComponent {
   });
 
   constructor() {
+    this.restorePendingProof();
     this.form.controls.governorate.valueChanges.pipe(takeUntilDestroyed()).subscribe(value => {
       this.selectedGovernorate.set(value);
       this.form.controls.city.setValue('', { emitEvent: false });
@@ -541,11 +556,12 @@ export class CheckoutPageComponent {
           const { accessToken, ...order } = data;
           this.order.set(order);
           this.proofAccessToken.set(accessToken ?? '');
+          if (this.selectedPaymentMethod() === 'instapay' && accessToken) this.savePendingProof(order, accessToken);
           this.store.clearCart();
           this.isSubmitting.set(false);
           this.idempotencyKey = crypto.randomUUID();
           if (this.selectedPaymentMethod() === 'instapay') {
-            this.proofUploading.set(true);
+            this.proofUploading.set(false); // waiting for the customer to choose a file, not uploading yet
             this.proofError.set('');
           } else {
             this.orderSubmitted.set(true);
@@ -561,6 +577,45 @@ export class CheckoutPageComponent {
           );
         },
       });
+  }
+
+  private static readonly PENDING_PROOF_KEY = 'rabah-pending-proof-v1';
+  private static readonly PENDING_PROOF_TTL_MS = 24 * 60 * 60 * 1000;
+
+  private savePendingProof(order: Omit<OrderSummary, 'accessToken'>, accessToken: string): void {
+    try {
+      sessionStorage.setItem(CheckoutPageComponent.PENDING_PROOF_KEY, JSON.stringify({
+        orderNumber: order.orderNumber, id: order.id, total: order.total, currency: order.currency,
+        paymentMethod: order.paymentMethod, createdAt: order.createdAt, accessToken, savedAt: Date.now(),
+      }));
+    } catch { /* storage unavailable (private mode): the upload step just won't survive a refresh */ }
+  }
+
+  private clearPendingProof(): void {
+    try { sessionStorage.removeItem(CheckoutPageComponent.PENDING_PROOF_KEY); } catch { /* ignore */ }
+  }
+
+  private restorePendingProof(): void {
+    try {
+      const raw = sessionStorage.getItem(CheckoutPageComponent.PENDING_PROOF_KEY);
+      if (!raw) return;
+      const saved = JSON.parse(raw) as { orderNumber?: string; accessToken?: string; savedAt?: number; id?: string; total?: number; currency?: string; paymentMethod?: string; createdAt?: string };
+      const fresh = typeof saved.savedAt === 'number' && Date.now() - saved.savedAt < CheckoutPageComponent.PENDING_PROOF_TTL_MS;
+      if (!fresh || !saved.orderNumber || !/^[a-f\d]{64}$/i.test(saved.accessToken ?? '')) {
+        this.clearPendingProof();
+        return;
+      }
+      this.order.set({
+        id: saved.id ?? '', orderNumber: saved.orderNumber, status: 'new', paymentStatus: 'pending', paymentMethod: 'instapay',
+        currency: saved.currency ?? 'EGP', subtotal: 0, shippingFee: 0, shippingGovernorate: '', shippingArea: '',
+        total: saved.total ?? 0, createdAt: saved.createdAt ?? '',
+      } as OrderSummary);
+      this.proofAccessToken.set(saved.accessToken as string);
+      this.selectedPaymentMethod.set('instapay');
+      this.proofRestored.set(true);
+    } catch {
+      this.clearPendingProof();
+    }
   }
 
   onProofFileSelected(event: Event): void {
@@ -593,13 +648,19 @@ export class CheckoutPageComponent {
       next: () => {
         this.proofUploading.set(false);
         this.proofAccessToken.set('');
+        this.clearPendingProof();
         this.orderSubmitted.set(true);
       },
       error: (error: HttpErrorResponse) => {
         this.proofUploading.set(false);
+        // The server refused this order or token for good (wrong token, paid, cancelled): stop offering the upload.
+        if (error.status === 403 || error.status === 404 || error.status === 409) {
+          this.proofAccessToken.set('');
+          this.clearPendingProof();
+        }
         this.proofError.set(
           error.error?.error?.message ??
-            (this.lang() === 'ar' ? 'تع resembled رفع صورة الإثبات. جرب مرة أخرى.' : 'Could not upload the proof image. Try again.'),
+            (this.lang() === 'ar' ? 'تعذّر رفع صورة الإثبات. جرب مرة أخرى.' : 'Could not upload the proof image. Try again.'),
         );
       },
     });

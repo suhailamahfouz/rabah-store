@@ -1,7 +1,9 @@
 import type { Request, Response, NextFunction } from 'express';
 import multer from 'multer';
-import { env } from '../config/env.js';
 import { AppError } from '../utils/AppError.js';
+
+/** Same limit the checkout page shows to customers. */
+export const MAX_PROOF_BYTES = 5 * 1024 * 1024;
 
 /** Allowed MIME types and server-controlled filename extensions for proofs. */
 const ALLOWED_IMAGE_TYPES: Record<string, string> = {
@@ -21,13 +23,12 @@ function fileFilter(_req: Request, file: Express.Multer.File, cb: multer.FileFil
 
 /**
  * Payment-proof upload. Memory storage keeps the file out of the public
- * `uploads/public` directory; it is written to disk only by the proof handler.
- * Base64 is never stored in MongoDB.
+ * `uploads/public` directory; the proof handler stores the bytes in MongoDB.
  */
 export const paymentProofUpload = multer({
   storage: multer.memoryStorage(),
   limits: {
-    fileSize: env.MAX_UPLOAD_MB * 1024 * 1024,
+    fileSize: MAX_PROOF_BYTES,
     files: 1,
     fields: 2,
     parts: 3,
@@ -60,7 +61,7 @@ export function hasValidProofSignature(file: Express.Multer.File): boolean {
 export function handleUploadError(err: unknown, _req: Request, res: Response, next: NextFunction) {
   if (err instanceof multer.MulterError) {
     if (err.code === 'LIMIT_FILE_SIZE') {
-      return next(AppError.badRequest(`File is too large. Maximum size is ${env.MAX_UPLOAD_MB} MB`));
+      return next(AppError.badRequest(`File is too large. Maximum size is 5 MB`));
     }
     return next(AppError.badRequest('Upload failed'));
   }

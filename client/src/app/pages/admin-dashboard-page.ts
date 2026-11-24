@@ -402,7 +402,13 @@ function summarizeDemoCustomers(orders: AdminOrder[]): AdminCustomer[] {
                       </select></td>
                       <td><select [ngModel]="order.paymentStatus" (ngModelChange)="savePaymentStatus(order, $event)" [name]="'payment-status-' + order._id" [attr.aria-label]="'حالة الدفع ' + order.orderNumber">
                         <option *ngFor="let status of paymentStatuses" [value]="status">{{ paymentLabel(status) }}</option>
-                      </select><small>{{ paymentMethodLabel(order.paymentMethod) }}</small></td>
+                      </select><small>{{ paymentMethodLabel(order.paymentMethod) }}</small>
+                        <ng-container *ngIf="order.paymentMethod === 'instapay'">
+                          <a *ngIf="order.paymentProof?.available" class="proof-link" [href]="proofUrl(order)" target="_blank" rel="noopener">عرض إثبات التحويل</a>
+                          <small *ngIf="order.paymentProof && !order.paymentProof.available">إثبات قديم غير متاح (اتحفظ على سيرفر قديم)</small>
+                          <small *ngIf="!order.paymentProof">لسه مفيش إثبات تحويل</small>
+                          <small *ngIf="order.paymentProof?.transferReference">رقم المرجع: {{ order.paymentProof?.transferReference }}</small>
+                        </ng-container></td>
                       <td><details><summary>المنتجات ({{ formatNumber(order.items.length) }})</summary>
                         <ul><li *ngFor="let item of order.items">{{ item.name.ar }} × {{ formatNumber(item.quantity) }} — {{ formatCurrency(item.unitPrice, order.currency) }}<p *ngIf="item.color" class="item-note">{{ item.color.ar || item.color.en }}</p><p *ngIf="item.note" class="item-note">ملحوظة: {{ item.note }}</p></li></ul>
                         <small *ngIf="order.customer.notes">ملاحظات: {{ order.customer.notes }}</small>
@@ -810,6 +816,7 @@ function summarizeDemoCustomers(orders: AdminOrder[]): AdminCustomer[] {
     .row-actions { display: flex; min-width: 185px; flex-wrap: wrap; gap: .3rem; }
     .row-actions button { padding: .42rem .62rem; font-size: .74rem; }
     select { max-width: 175px; padding: .5rem; border: 1px solid #ded5ca; border-radius: .55rem; background: #fffdf9; color: #362d29; font: inherit; font-size: .78rem; }
+    .proof-link { display: inline-block; margin-top: .35rem; color: #8d573c; font-size: .8rem; font-weight: 700; text-decoration: underline; }
     .status { display: inline-block; padding: .3rem .6rem; border-radius: 999px; background: #f3eadc; color: #795b33; font-size: .74rem; white-space: nowrap; }
     .status.inactive { background: #f5e5e3; color: #9e332b; }
     .empty, .hint, .settings-note { color: #877c72; font-size: .86rem; }
@@ -1100,6 +1107,10 @@ export class AdminDashboardPageComponent {
     if (period.changePercent === null) return `لا تتوفر مقارنة مع ${previousLabel}`;
     const direction = period.changePercent >= 0 ? 'زيادة' : 'انخفاض';
     return `${direction} ${this.formatNumber(Math.abs(period.changePercent))}٪ عن ${previousLabel}`;
+  }
+
+  proofUrl(order: AdminOrder): string {
+    return this.adminApi ? this.adminApi.paymentProofUrl(order._id) : '#';
   }
 
   awaitingPaymentCount(): number {

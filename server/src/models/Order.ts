@@ -62,7 +62,10 @@ const orderSchema = new Schema(
     trackingEvents: { type: [trackingEventSchema], default: [] },
     paymentProof: {
       transferReference: { type: String, trim: true, maxlength: 80 },
-      filePath: String, // stored filename only, served through an authenticated admin route
+      filePath: String, // legacy: filename on the web server disk (older proofs only)
+      proofId: { type: Schema.Types.ObjectId, ref: 'PaymentProof' }, // current proofs, served through GET /api/admin/orders/:id/proof
+      mime: String,
+      size: Number,
       uploadedAt: Date,
       reviewNote: { type: String, maxlength: 300 },
     },

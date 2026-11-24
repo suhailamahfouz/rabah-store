@@ -33,6 +33,23 @@ describe('AdminDashboardPageComponent', () => {
     expect(component.orders().filter((order) => order.orderStatus === 'new')).toHaveLength(1);
   });
 
+  it('shows a proof link only for InstaPay orders that have a stored proof', () => {
+    const { fixture, component } = createComponent();
+    const base = component.orders()[0];
+    const make = (id: string, over: Partial<AdminOrder>): AdminOrder => ({ ...base, _id: id, orderNumber: `T-${id}`, paymentMethod: 'instapay', ...over });
+    component.orders.set([
+      make('a1', { paymentProof: { available: true, transferReference: 'REF99' } }),
+      make('b2', { paymentProof: undefined }),
+      make('c3', { paymentMethod: 'cod', paymentProof: undefined }),
+    ]);
+    component.selectTab('orders');
+    fixture.detectChanges();
+    const page = fixture.nativeElement as HTMLElement;
+    expect(page.querySelectorAll('a.proof-link')).toHaveLength(1);
+    expect(page.textContent).toContain('REF99');
+    expect(page.textContent).toContain('لسه مفيش إثبات تحويل');
+  });
+
   it('opens the mobile sidebar and closes it after choosing a section', () => {
     const { fixture, component } = createComponent();
     const toggle = fixture.nativeElement.querySelector('.mobile-menu-toggle') as HTMLButtonElement;

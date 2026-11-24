@@ -28,7 +28,7 @@ export interface UploadProofResponse {
     orderNumber: string;
     paymentStatus: string;
     proof: {
-      filename: string;
+      id: string;
       size: number;
       mime: string;
       uploadedAt: string;

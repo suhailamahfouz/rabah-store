@@ -1,3 +1,4 @@
+import { viewPaymentProof } from '../controllers/proof.controller.js';
 import { Router } from 'express';
 import { requireAdmin } from '../middleware/auth.js';
 import { handleImageUpload, handleProductImageUpload, validateImageUploads, validateProductImageUploads } from '../services/product-image-storage.service.js';
@@ -30,6 +31,7 @@ adminRouter.patch('/admin/categories/:id', requireAdmin, updateCategory);
 adminRouter.delete('/admin/categories/:id', requireAdmin, deleteCategory);
 adminRouter.get('/admin/orders', requireAdmin, listOrders);
 adminRouter.patch('/admin/orders/:id', requireAdmin, updateOrder);
+adminRouter.get('/admin/orders/:id/proof', requireAdmin, viewPaymentProof);
 adminRouter.get('/admin/customers', requireAdmin, listCustomers);
 adminRouter.get('/admin/customers/:id', requireAdmin, readCustomer);
 adminRouter.get('/admin/settings', requireAdmin, readSettings);

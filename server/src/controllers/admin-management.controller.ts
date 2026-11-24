@@ -193,9 +193,18 @@ export async function listOrders(req: Request, res: Response): Promise<void> {
     }
   }
   const orders = await Order.find(filter).sort({ createdAt: -1 }).limit(200)
-    .select('orderNumber customer items subtotal shippingFee total currency paymentMethod paymentStatus orderStatus createdAt')
+    .select('orderNumber customer items subtotal shippingFee total currency paymentMethod paymentStatus orderStatus createdAt paymentProof.transferReference paymentProof.uploadedAt paymentProof.proofId paymentProof.filePath')
     .lean();
-  res.json({ success: true, data: orders });
+  res.json({
+    success: true,
+    data: orders.map(({ paymentProof, ...order }) => ({
+      ...order,
+      // Never expose storage ids or paths; the client only needs to know a proof exists.
+      paymentProof: paymentProof && (paymentProof.proofId || paymentProof.filePath)
+        ? { transferReference: paymentProof.transferReference, uploadedAt: paymentProof.uploadedAt, available: Boolean(paymentProof.proofId) }
+        : undefined,
+    })),
+  });
 }
 
 export async function updateOrder(req: Request, res: Response): Promise<void> {
