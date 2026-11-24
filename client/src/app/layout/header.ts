@@ -9,9 +9,13 @@ import { AuthService } from '../services/auth.service';
   standalone: true,
   imports: [CommonModule, RouterLink, RouterLinkActive],
   template: `
-    <header class="site-header" [class.hero-overlay]="isHome()">
+    <header class="site-header">
       <div class="top-bar">
-        <div class="announcement" [attr.aria-label]="store.announcementText()" *ngIf="store.announcementText() && !store.settingsError() && !store.catalogError()">
+        <div
+          class="announcement"
+          [attr.aria-label]="store.announcementText()"
+          *ngIf="store.announcementText() && !store.settingsError() && !store.catalogError()"
+        >
           <div class="announcement-track" aria-hidden="true">
             <span class="announcement-group">
               <span *ngFor="let item of [1, 2, 3]">{{ store.announcementText() }}</span>
@@ -21,9 +25,20 @@ import { AuthService } from '../services/auth.service';
             </span>
           </div>
         </div>
-        <p class="settings-error" *ngIf="store.settingsError() || store.catalogError()" role="status">
+        <p
+          class="settings-error"
+          *ngIf="store.settingsError() || store.catalogError()"
+          role="status"
+        >
           {{ store.settingsError() || store.catalogError() }}
-          <button *ngIf="store.settingsError()" type="button" class="lang-switch" (click)="store.loadStoreSettings()">{{ store.lang() === 'ar' ? 'إعادة المحاولة' : 'Try again' }}</button>
+          <button
+            *ngIf="store.settingsError()"
+            type="button"
+            class="lang-switch"
+            (click)="store.loadStoreSettings()"
+          >
+            {{ store.lang() === 'ar' ? 'إعادة المحاولة' : 'Try again' }}
+          </button>
         </p>
         <div class="top-actions">
           <button type="button" class="lang-switch" (click)="toggleLanguage()">
@@ -46,20 +61,35 @@ import { AuthService } from '../services/auth.service';
         </button>
 
         <a routerLink="/" class="brand" aria-label="RABAH home">
-          <img [src]="store.storeSettings().logoUrl || '/logo-plat.png'" [alt]="store.storeSettings().storeName" />
+          <img
+            [src]="store.storeSettings().logoUrl || '/logo-plat.png'"
+            [alt]="store.storeSettings().storeName"
+          />
         </a>
 
         <div class="nav-links">
-          <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">{{ store.lang() === 'ar' ? 'الرئيسية' : 'Home' }}</a>
-          <a routerLink="/catalog" routerLinkActive="active">{{ store.lang() === 'ar' ? 'المتجر' : 'Catalog' }}</a>
+          <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">{{
+            store.lang() === 'ar' ? 'الرئيسية' : 'Home'
+          }}</a>
+          <a routerLink="/catalog" routerLinkActive="active">{{
+            store.lang() === 'ar' ? 'المتجر' : 'Catalog'
+          }}</a>
           <ng-container *ngIf="auth.user() as user; else guestLinks">
             <span class="user-greeting">{{ user.name }}</span>
-            <a routerLink="/account/orders" routerLinkActive="active">{{ store.lang() === 'ar' ? 'طلباتي' : 'My orders' }}</a>
-            <button type="button" class="logout-link" (click)="logout()">{{ store.lang() === 'ar' ? 'تسجيل الخروج' : 'Log out' }}</button>
+            <a routerLink="/account/orders" routerLinkActive="active">{{
+              store.lang() === 'ar' ? 'طلباتي' : 'My orders'
+            }}</a>
+            <button type="button" class="logout-link" (click)="logout()">
+              {{ store.lang() === 'ar' ? 'تسجيل الخروج' : 'Log out' }}
+            </button>
           </ng-container>
           <ng-template #guestLinks>
-            <a routerLink="/login" routerLinkActive="active">{{ store.lang() === 'ar' ? 'تسجيل الدخول' : 'Login' }}</a>
-            <a routerLink="/login" [queryParams]="{ register: true }">{{ store.lang() === 'ar' ? 'إنشاء حساب' : 'Register' }}</a>
+            <a routerLink="/login" routerLinkActive="active">{{
+              store.lang() === 'ar' ? 'تسجيل الدخول' : 'Login'
+            }}</a>
+            <a routerLink="/login" [queryParams]="{ register: true }">{{
+              store.lang() === 'ar' ? 'إنشاء حساب' : 'Register'
+            }}</a>
           </ng-template>
         </div>
 
@@ -96,22 +126,55 @@ import { AuthService } from '../services/auth.service';
         >
           <div class="drawer-heading">
             <a routerLink="/" class="drawer-brand" aria-label="RABAH home" (click)="closeMenu()">
-              <img [src]="store.storeSettings().logoUrl || '/logo-plat.png'" [alt]="store.storeSettings().storeName" />
+              <img
+                [src]="store.storeSettings().logoUrl || '/logo-plat.png'"
+                [alt]="store.storeSettings().storeName"
+              />
             </a>
-            <button type="button" class="drawer-close" (click)="closeMenu()" [attr.aria-label]="store.lang() === 'ar' ? 'إغلاق' : 'Close'">×</button>
+            <button
+              type="button"
+              class="drawer-close"
+              (click)="closeMenu()"
+              [attr.aria-label]="store.lang() === 'ar' ? 'إغلاق' : 'Close'"
+            >
+              ×
+            </button>
           </div>
-          <nav class="drawer-links" [attr.aria-label]="store.lang() === 'ar' ? 'روابط الموقع' : 'Site links'">
-            <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }" (click)="closeMenu()">{{ store.lang() === 'ar' ? 'الرئيسية' : 'Home' }}<span>01</span></a>
-            <a routerLink="/catalog" routerLinkActive="active" (click)="closeMenu()">{{ store.lang() === 'ar' ? 'التصنيفات' : 'Categories' }}<span>02</span></a>
+          <nav
+            class="drawer-links"
+            [attr.aria-label]="store.lang() === 'ar' ? 'روابط الموقع' : 'Site links'"
+          >
+            <a
+              routerLink="/"
+              routerLinkActive="active"
+              [routerLinkActiveOptions]="{ exact: true }"
+              (click)="closeMenu()"
+              >{{ store.lang() === 'ar' ? 'الرئيسية' : 'Home' }}<span>01</span></a
+            >
+            <a routerLink="/catalog" routerLinkActive="active" (click)="closeMenu()"
+              >{{ store.lang() === 'ar' ? 'التصنيفات' : 'Categories' }}<span>02</span></a
+            >
             <ng-container *ngIf="auth.user() as user; else mobileGuestLinks">
-              <a routerLink="/account/orders" routerLinkActive="active" (click)="closeMenu()">{{ store.lang() === 'ar' ? 'طلباتي' : 'My orders' }}<span>03</span></a>
-              <button type="button" class="drawer-action" (click)="logout()">{{ user.name }} · {{ store.lang() === 'ar' ? 'تسجيل الخروج' : 'Log out' }}<span>04</span></button>
+              <a routerLink="/account/orders" routerLinkActive="active" (click)="closeMenu()"
+                >{{ store.lang() === 'ar' ? 'طلباتي' : 'My orders' }}<span>03</span></a
+              >
+              <button type="button" class="drawer-action" (click)="logout()">
+                {{ user.name }} · {{ store.lang() === 'ar' ? 'تسجيل الخروج' : 'Log out'
+                }}<span>04</span>
+              </button>
             </ng-container>
             <ng-template #mobileGuestLinks>
-              <a routerLink="/login" routerLinkActive="active" (click)="closeMenu()">{{ store.lang() === 'ar' ? 'تسجيل الدخول' : 'Sign in' }}<span>03</span></a>
-              <a routerLink="/login" [queryParams]="{ register: true }" (click)="closeMenu()">{{ store.lang() === 'ar' ? 'إنشاء حساب' : 'Register' }}<span>04</span></a>
+              <a routerLink="/login" routerLinkActive="active" (click)="closeMenu()"
+                >{{ store.lang() === 'ar' ? 'تسجيل الدخول' : 'Sign in' }}<span>03</span></a
+              >
+              <a routerLink="/login" [queryParams]="{ register: true }" (click)="closeMenu()"
+                >{{ store.lang() === 'ar' ? 'إنشاء حساب' : 'Register' }}<span>04</span></a
+              >
             </ng-template>
-            <a routerLink="/cart" routerLinkActive="active" (click)="closeMenu()">{{ store.lang() === 'ar' ? 'سلة التسوق' : 'Shopping bag' }}<span>{{ cartCount() }}</span></a>
+            <a routerLink="/cart" routerLinkActive="active" (click)="closeMenu()"
+              >{{ store.lang() === 'ar' ? 'سلة التسوق' : 'Shopping bag'
+              }}<span>{{ cartCount() }}</span></a
+            >
           </nav>
           <p class="drawer-note" *ngIf="store.announcementText()">{{ store.announcementText() }}</p>
         </aside>
@@ -133,15 +196,9 @@ import { AuthService } from '../services/auth.service';
         position: sticky;
         top: 0;
         z-index: 20;
-        background: rgba(247, 243, 237, 0.96);
+        background: rgba(255, 253, 249, 0.98);
         border-bottom: 1px solid rgba(84, 33, 44, 0.1);
-      }
-
-      .site-header.hero-overlay {
-        position: absolute;
-        inset: 0 0 auto;
-        background: transparent;
-        border: 0;
+        box-shadow: 0 1px 14px rgba(44, 31, 25, 0.04);
       }
 
       .top-bar {
@@ -233,10 +290,10 @@ import { AuthService } from '../services/auth.service';
         position: relative;
         width: min(1200px, calc(100% - 3rem));
         margin: 0 auto;
-        display: flex;
+        display: grid;
+        grid-template-columns: 1fr auto 1fr;
         align-items: center;
-        justify-content: space-between;
-        min-height: 76px;
+        min-height: 78px;
         gap: 1rem;
       }
 
@@ -244,9 +301,8 @@ import { AuthService } from '../services/auth.service';
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        position: absolute;
-        left: 50%;
-        transform: translateX(-50%);
+        position: static;
+        grid-column: 2;
         text-decoration: none;
       }
 
@@ -259,8 +315,10 @@ import { AuthService } from '../services/auth.service';
 
       .nav-links {
         display: flex;
+        grid-column: 1;
         align-items: center;
-        gap: 1.7rem;
+        justify-self: start;
+        gap: 1.55rem;
       }
 
       .menu-toggle {
@@ -285,11 +343,12 @@ import { AuthService } from '../services/auth.service';
 
       .nav-links a,
       .nav-tools a {
+        position: relative;
         color: #453b37;
         text-decoration: none;
-        font-size: 0.68rem;
-        font-weight: 500;
-        letter-spacing: 0.12em;
+        font-size: 0.7rem;
+        font-weight: 600;
+        letter-spacing: 0.1em;
         text-transform: uppercase;
       }
 
@@ -297,8 +356,41 @@ import { AuthService } from '../services/auth.service';
         color: #96794f;
       }
 
-      .user-greeting { color: #8d573c; font-size: .68rem; font-weight: 700; }
-      .logout-link { border: 0; padding: 0; background: transparent; color: #641b2e; font: inherit; font-size: .68rem; cursor: pointer; }
+      .nav-links a::after {
+        position: absolute;
+        right: 0;
+        bottom: -0.65rem;
+        left: 0;
+        height: 1px;
+        background: currentColor;
+        content: '';
+        opacity: 0;
+        transform: scaleX(0);
+        transition:
+          opacity 160ms ease,
+          transform 160ms ease;
+      }
+
+      .nav-links a:hover::after,
+      .nav-links a.active::after {
+        opacity: 1;
+        transform: scaleX(1);
+      }
+
+      .user-greeting {
+        color: #8d573c;
+        font-size: 0.68rem;
+        font-weight: 700;
+      }
+      .logout-link {
+        border: 0;
+        padding: 0;
+        background: transparent;
+        color: #641b2e;
+        font: inherit;
+        font-size: 0.68rem;
+        cursor: pointer;
+      }
 
       .hero-overlay .nav-links a,
       .hero-overlay .nav-tools a {
@@ -311,8 +403,10 @@ import { AuthService } from '../services/auth.service';
 
       .nav-tools {
         display: flex;
+        grid-column: 3;
         align-items: center;
         justify-content: flex-end;
+        justify-self: end;
         gap: 0.9rem;
       }
 
@@ -449,7 +543,22 @@ import { AuthService } from '../services/auth.service';
         letter-spacing: 0.1em;
       }
 
-      .drawer-action { display: flex; align-items: center; justify-content: space-between; width: 100%; padding: 1.1rem 0; border: 0; border-bottom: 1px solid rgba(84, 33, 44, 0.12); background: transparent; color: inherit; font: inherit; font-family: Georgia, 'Times New Roman', serif; font-size: 1.25rem; text-align: inherit; cursor: pointer; }
+      .drawer-action {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        width: 100%;
+        padding: 1.1rem 0;
+        border: 0;
+        border-bottom: 1px solid rgba(84, 33, 44, 0.12);
+        background: transparent;
+        color: inherit;
+        font: inherit;
+        font-family: Georgia, 'Times New Roman', serif;
+        font-size: 1.25rem;
+        text-align: inherit;
+        cursor: pointer;
+      }
 
       .drawer-note {
         margin: auto 0 0;
@@ -472,8 +581,12 @@ import { AuthService } from '../services/auth.service';
       }
 
       @keyframes backdrop-in {
-        from { opacity: 0; }
-        to { opacity: 1; }
+        from {
+          opacity: 0;
+        }
+        to {
+          opacity: 1;
+        }
       }
 
       @media (max-width: 720px) {
@@ -487,7 +600,11 @@ import { AuthService } from '../services/auth.service';
         }
 
         .main-nav {
+          display: grid;
+          grid-template-columns: 46px 1fr 46px;
+          width: min(100% - 1.5rem, 640px);
           min-height: 68px;
+          gap: 0;
         }
 
         .nav-links {
@@ -496,6 +613,7 @@ import { AuthService } from '../services/auth.service';
 
         .menu-toggle {
           display: flex;
+          grid-column: 1;
         }
 
         .nav-tools a {
@@ -508,8 +626,18 @@ import { AuthService } from '../services/auth.service';
           height: 54px;
         }
 
+        .brand {
+          grid-column: 2;
+          justify-self: center;
+        }
+
         .icon-button {
           display: none;
+        }
+
+        .nav-tools {
+          grid-column: 3;
+          justify-self: end;
         }
       }
 
@@ -565,8 +693,14 @@ export class HeaderComponent {
 
   logout(): void {
     this.auth.logout().subscribe({
-      next: () => { this.closeMenu(); void this.router.navigate(['/login']); },
-      error: () => { this.closeMenu(); void this.router.navigate(['/login']); },
+      next: () => {
+        this.closeMenu();
+        void this.router.navigate(['/login']);
+      },
+      error: () => {
+        this.closeMenu();
+        void this.router.navigate(['/login']);
+      },
     });
   }
 }
